@@ -16,17 +16,21 @@ Esta es la forma más sencilla de desplegar la aplicación completa (frontend, b
 cp .env.docker.example .env
 ```
 
-Edita `.env` y cambia:
+Edita `.env` y sustituye obligatoriamente:
 - `APP_PORT` (por defecto `55896`)
 - `POSTGRES_PASSWORD`
 - `JWT_SECRET` (usa una cadena larga y aleatoria)
 - `ADMIN_PASSWORD` (contraseña inicial del administrador)
+
+El Compose falla intencionadamente si faltan los tres secretos. No publiques `.env`.
 
 3. Construye y levanta todo:
 
 ```bash
 docker compose up -d --build
 ```
+
+Espera los estados `healthy` de PostgreSQL, backend y frontend (`docker compose ps`). El backend aplica únicamente migraciones Drizzle versionadas al iniciar.
 
 4. Abre la aplicación:
 
@@ -48,6 +52,20 @@ docker compose restart            # reiniciar
 docker compose down               # detener (los datos se conservan en volúmenes)
 docker compose up -d --build      # actualizar tras cambios
 ```
+
+## Backup y restauración PostgreSQL
+
+```bash
+docker compose exec -T db pg_dump -U postgres -d inventario -Fc > inventario.dump
+# Restaurar reemplaza toda la base destino: respalda primero y verifica el proyecto.
+docker compose stop backend
+docker compose exec db dropdb -U postgres --if-exists inventario
+docker compose exec db createdb -U postgres inventario
+docker compose exec -T db pg_restore -U postgres -d inventario --no-owner < inventario.dump
+docker compose up -d backend
+```
+
+El volumen `uploads` requiere respaldo independiente. Nunca uses `down -v` para conservar datos.
 
 ## Datos persistentes
 

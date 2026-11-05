@@ -16,6 +16,7 @@
 - [x] Task 4 (inventario): productos, historial, archivo y movimientos migrados a Drizzle con Zod, errores centralizados y pruebas HTTP de integración contra PostgreSQL aislado; validada la concurrencia de salidas sin permitir stock negativo.
 - [ ] Task 6 (parcial): PostgreSQL aislado/migraciones, Playwright movimiento UI y stock persistido aprobados; suites/build backend/frontend ejecutados. Usuario limitado, 2FA, pedido UI, constancia, export/restore y concurrencia backup/restore pendientes; security suite live no quedó verde tras contaminación de login. No declarar Task 6 completo; ver `e2e-security-report.md`.
 - [ ] Verificación Docker y documentación final.
+- [x] Task 7 (Docker/operación): imágenes backend/frontend, Compose con healthchecks y dependencias saludables, secretos obligatorios y persistencia `pgdata`/`uploads`; backup/restore y docs actualizadas. Migraciones Drizzle versionadas únicamente. Builds backend/frontend pasan; frontend 23/23. Backend suite intentada sin `DATABASE_URL` (bloqueada por ausencia de PostgreSQL aislado). Docker CLI no instalado, por lo que build/arranque real no verificados. Informe: `.superpowers/sdd/2026-11-05-modernizacion-inventario/docker-report.md`.
 - [x] Brecha E2E de movimientos: formulario Operate accesible/responsive, validación Zod, envío a `POST /api/inventory/movement` y estados de red/conflicto; ver `frontend-report.md` y `e2e-security-report.md`.
 
 ## Registro de decisiones

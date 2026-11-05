@@ -19,6 +19,14 @@ Fecha de ejecución: 2026-11-05. Entorno Windows, Node.js v22.18.0/npm (la versi
 
 Comandos solicitados se ejecutaron en cada raíz. No se arrancó PostgreSQL para evitar un servicio/datos adicionales; hace falta una DB de pruebas aislada para obtener suite backend verde.
 
+## Task 7 — contenedores y despliegue (2026-11-05)
+
+- `npm run build` backend y frontend: aprobados.
+- `npm test` frontend: 23/23 aprobados.
+- `npm test` backend: bloqueado por falta de `DATABASE_URL`/PostgreSQL de pruebas. Resultado observado: 19 tests aprobados, 42 omitidos y 7 errores de setup en suites que crean bases aisladas.
+- Docker: bloqueado. PowerShell indica literalmente que `docker` no se reconoce como nombre de un cmdlet, función, archivo de script o programa ejecutable. No se ejecutaron `docker compose config`, build ni arranque; runtime no verificado.
+- Informe: `.superpowers/sdd/2026-11-05-modernizacion-inventario/docker-report.md`.
+
 ## Protocolo reproducible
 
 En la raíz: `npm ci`, `npx prisma generate`, `npm run build`, `npm test`, `npm audit --audit-level=high`. Requiere `DATABASE_URL` apuntando a PostgreSQL de pruebas aislada para ejecutar health tests. En `frontend`: `npm ci`, `npm run build`, `npm test`, `npm audit --audit-level=high`.
