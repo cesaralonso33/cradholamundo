@@ -8,13 +8,13 @@
     <p v-else-if="loading" role="status" class="text-sm text-gray-600 mb-3">Cargando papelería...</p>
 
     <!-- Tabs -->
-    <div class="flex gap-2 mb-4">
+    <div class="flex gap-2 mb-4" role="tablist" aria-label="Secciones de papelería">
       <button @click="tab = 'orders'"
         :class="tab === 'orders' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'"
-        class="px-4 py-1.5 rounded text-sm border">Pedidos</button>
+        class="px-4 py-1.5 rounded text-sm border" role="tab" :aria-selected="tab === 'orders'">Pedidos</button>
       <button @click="tab = 'items'"
         :class="tab === 'items' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'"
-        class="px-4 py-1.5 rounded text-sm border">Catálogo</button>
+        class="px-4 py-1.5 rounded text-sm border" role="tab" :aria-selected="tab === 'items'">Catálogo</button>
     </div>
 
     <!-- ===== PEDIDOS ===== -->
@@ -75,9 +75,9 @@
       <section v-if="isAdmin" class="border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
         <div class="flex items-center justify-between mb-2">
           <h2 class="font-semibold">{{ editingItem ? "Editar artículo" : "Alta de artículo" }}</h2>
-          <label class="text-sm text-blue-600 hover:underline cursor-pointer">
+          <label for="papeleria-import" class="text-sm text-blue-600 hover:underline cursor-pointer">
             Importar Excel
-            <input type="file" accept=".xlsx,.xls" class="hidden" @change="onImport" />
+            <input id="papeleria-import" type="file" accept=".xlsx,.xls" class="sr-only" @change="onImport" />
           </label>
         </div>
         <form @submit.prevent="saveItem" class="grid grid-cols-1 md:grid-cols-4 gap-2 items-end">

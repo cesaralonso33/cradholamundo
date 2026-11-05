@@ -36,7 +36,7 @@
       <div class="flex justify-end">
         <button @click="save" class="bg-blue-600 text-white px-4 py-1.5 rounded text-sm hover:bg-blue-700">Guardar</button>
       </div>
-      <p v-if="msg" role="status" class="text-sm mt-2" :class="saveError ? 'text-red-600' : 'text-green-600'">{{ msg }}</p>
+      <p v-if="msg" :role="saveError ? 'alert' : 'status'" class="text-sm mt-2" :class="saveError ? 'text-red-600' : 'text-green-600'">{{ msg }}</p>
     </section>
 
     <section class="bg-white p-4 rounded shadow max-w-md mt-4 space-y-3">
@@ -107,7 +107,7 @@
         </button>
         <label class="border px-4 py-1.5 rounded text-sm cursor-pointer hover:bg-gray-50">
           Restaurar respaldo
-          <input type="file" accept=".json,application/json" class="hidden" @change="restoreBackup" />
+          <input id="restore-backup" type="file" accept=".json,application/json" class="sr-only" @change="restoreBackup" />
         </label>
       </div>
       <p v-if="backupMsg" :role="backupErr ? 'alert' : 'status'" aria-live="polite" class="text-sm" :class="backupErr ? 'text-red-600' : 'text-green-600'">{{ backupMsg }}</p>

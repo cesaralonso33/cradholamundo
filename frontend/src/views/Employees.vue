@@ -8,9 +8,9 @@
     <section class="border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
       <div class="flex items-center justify-between mb-2">
         <h2 class="font-semibold">Alta de empleado</h2>
-        <label class="text-sm text-blue-600 hover:underline cursor-pointer">
-          Importar Excel
-          <input type="file" accept=".xlsx,.xls" class="hidden" @change="onImport" />
+          <label for="employees-import" class="text-sm text-blue-600 hover:underline cursor-pointer">
+            Importar Excel
+            <input id="employees-import" type="file" accept=".xlsx,.xls" class="sr-only" @change="onImport" />
         </label>
       </div>
       <form @submit.prevent="create" class="grid grid-cols-1 md:grid-cols-3 gap-2 items-end">

@@ -51,4 +51,13 @@ describe("sensitive backup controls", () => {
     await wrapper.findAll("button").find((item) => item.text().includes("Descargar respaldo seguro"))!.trigger("click");
     expect(apiDownloadBackup).toHaveBeenCalledWith(false);
   });
+
+  it("marks save failures as alerts rather than status messages", async () => {
+    const wrapper = mount(Settings, { global: { stubs: ["router-link"] } });
+    await flushPromises();
+    await wrapper.find('input[type="number"]').setValue(0);
+    await wrapper.findAll("button").find((item) => item.text().includes("Guardar"))!.trigger("click");
+    await flushPromises();
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true);
+  });
 });
