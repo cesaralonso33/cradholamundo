@@ -12,7 +12,14 @@ const routes: Route[] = [
   ['get','/api/settings','Read settings','JWT/API key + settings permission'],['put','/api/settings','Update setting','JWT/API key + settings permission','key,value'],['get','/api/settings/api-key','Read API key status','Admin'],['post','/api/settings/api-key','Generate API key (returned once)','Admin'],['delete','/api/settings/api-key','Revoke API key','Admin'],['put','/api/settings/api-enabled','Enable or disable API key','Admin','enabled'],['get','/api/backup','Export backup; includeSensitive=true includes credentials','Admin','Query: includeSensitive'],['post','/api/backup/restore','Restore sensitive backup','Admin','Backup JSON'],['get','/api/audit-logs','List audit logs','Admin','Query: page,pageSize,search'],
 ];
 
-const errors = Object.fromEntries([400,401,403,404,409,413,429,500].map(status => [status, { description: ({400:'Invalid input or operation',401:'Authentication required or invalid',403:'Permission denied',404:'Resource not found',409:'Resource conflict',413:'Payload too large',429:'Rate limit exceeded',500:'Internal server error'} as Record<number,string>)[status], content: {'application/json': { schema: { $ref: '#/components/schemas/Error' }, example: { error: 'message' } }} }]));
+const error = (description: string) => ({ description, content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } });
+const accessFor = (auth: string) => {
+  if (auth === 'Public') return { security: undefined, xAccess: { public: true } };
+  if (auth === 'Temporary 2FA token') return { security: [{ twoFactorToken: [] }], xAccess: { tokenType: 'temporary-2fa' } };
+  const permission = auth.match(/(users|products|employees|papeleria|settings) permission/)?.[1];
+  const admin = auth.includes('Admin');
+  return { security: [{ bearerAuth: [] }, { cookieAuth: [] }, { apiKey: [] }], xAccess: admin ? { admin: true } : permission ? { permission } : { authenticated: true } };
+};
 const paths: Record<string, Record<string, unknown>> = {};
 for (const [method, path, summary, auth = 'JWT', body] of routes) {
   const parameters = [...path.matchAll(/\{([^}]+)\}/g)].map(([_, name]) => ({ name, in: 'path', required: true, schema: { type: 'string' } }));
@@ -43,12 +50,21 @@ for (const [method, path, summary, auth = 'JWT', body] of routes) {
   }
   const requestBody = requestSchema ? { required: true, content: { [body!.startsWith('multipart') ? 'multipart/form-data' : 'application/json']: { schema: requestSchema } } } : undefined;
   paths[path] ??= {};
-  paths[path][method] = { summary, description: `Authentication/access: ${auth}.`, ...(auth === 'Public' ? {} : { security: [{ bearerAuth: [] }, { apiKey: [] }, { cookieAuth: [] }] }), ...(parameters.length ? { parameters } : {}), ...(requestBody ? { requestBody } : {}), responses: { 200: { description: 'Successful response' }, ...errors } };
+  const access = accessFor(auth);
+  const responses: Record<string, unknown> = { 200: { description: 'Successful response', content: { 'application/json': { schema: { type: 'object', additionalProperties: true } } } } };
+  if (access.security) responses['401'] = error('Missing or invalid authentication credentials');
+  if (access.xAccess.admin || access.xAccess.permission) responses['403'] = error('Authenticated caller lacks the required role or permission');
+  if (path.includes('{')) responses['404'] = error('Requested resource was not found');
+  if (requestSchema) responses['400'] = error('Invalid request body or parameters');
+  if (['/api/auth/login', '/api/auth/register', '/api/products', '/api/users', '/api/roles'].includes(path)) responses['409'] = error('Resource conflicts with existing data');
+  if (path.includes('/import') || path.includes('/constancias') || path === '/api/backup/restore') responses['413'] = error('Request exceeds the configured size limit');
+  if (path === '/health' || path === '/api/health') responses['503'] = { description: 'Database is unavailable' };
+  paths[path][method] = { summary, description: `Authentication/access: ${auth}.`, ...(access.security ? { security: access.security } : {}), xAccess: access.xAccess, ...(parameters.length ? { parameters } : {}), ...(requestBody ? { requestBody } : {}), responses };
 }
 
 export const openapi = {
   openapi: '3.1.0', info: { title: 'Inventario Rápido API', version: '1.0.0', description: 'REST API. Errors use { error: string }. API keys have administrator privileges.' }, servers: [{ url: '/' }], paths,
-  components: { securitySchemes: { bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, apiKey: { type: 'apiKey', in: 'header', name: 'x-api-key' }, cookieAuth: { type: 'apiKey', in: 'cookie', name: 'token' } }, schemas: { Error: { type: 'object', required: ['error'], properties: { error: { type: 'string' } } } } },
+  components: { securitySchemes: { bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, apiKey: { type: 'apiKey', in: 'header', name: 'x-api-key' }, cookieAuth: { type: 'apiKey', in: 'cookie', name: 'token' }, twoFactorToken: { type: 'apiKey', in: 'header', name: 'Authorization', description: 'Temporary token issued at login; send as Bearer token.' } }, schemas: { Error: { type: 'object', required: ['error'], properties: { error: { type: 'string' } } } } },
 } as const;
 
 export const openapiYaml = `${JSON.stringify(openapi, null, 2)}\n`;
