@@ -4,7 +4,7 @@ type Route = [Method, string, string, string?, string?];
 const routes: Route[] = [
   ['get','/api/openapi.json','OpenAPI specification as JSON','Public'],['get','/api/openapi.yaml','OpenAPI specification as YAML','Public'],
   ['get','/health','Health and database readiness','Public'],['get','/api/health','Health and database readiness','Public'],
-  ['post','/api/auth/register','Register a user','Public','username,password,email?'],['post','/api/auth/login','Authenticate and issue JWT/cookie','Public','username,password'],['post','/api/auth/2fa/complete','Complete two-factor login','Temporary 2FA token','token,code'],['post','/api/auth/logout','Clear authentication cookie','Public'],['get','/api/auth/me','Get current user','JWT or API key'],['post','/api/auth/2fa/setup','Create 2FA enrollment','JWT',''],['post','/api/auth/2fa/verify','Verify 2FA enrollment','JWT','code'],['post','/api/auth/2fa/disable','Disable 2FA','JWT','code'],
+  ['post','/api/auth/register','Register a user','JWT + users permission','username,password,email?'],['post','/api/auth/login','Authenticate and issue JWT/cookie','Public','username,password'],['post','/api/auth/2fa/complete','Complete two-factor login','Public','tempToken,code'],['post','/api/auth/logout','Clear authentication cookie','Public'],['get','/api/auth/me','Get current user','JWT or API key'],['post','/api/auth/2fa/setup','Create 2FA enrollment','JWT',''],['post','/api/auth/2fa/verify','Verify 2FA enrollment','JWT','code'],['post','/api/auth/2fa/disable','Disable 2FA','JWT','code'],
   ['get','/api/users','List users','JWT + users permission'],['put','/api/users/{id}','Update user','JWT + users permission','username?,email?,role?,password?'],['delete','/api/users/{id}','Delete user','JWT + users permission'],['get','/api/permissions','List permissions','Admin'],['get','/api/roles/options','List role options','JWT + users permission'],['get','/api/roles','List roles','Admin'],['post','/api/roles','Create role','Admin','name,description?,permissions?'],['put','/api/roles/{id}','Update role','Admin','name?,description?,permissions?'],['delete','/api/roles/{id}','Delete role','Admin'],
   ['get','/api/products','List/search products','JWT/API key + products permission','Query: page,pageSize,search,q'],['post','/api/products','Create or upsert product','JWT/API key + products permission','sku,name,category?,quantity?'],['get','/api/products/{sku}','Get product','JWT/API key + products permission'],['put','/api/products/{sku}','Update product','JWT/API key + products permission','name,category?,quantity?'],['delete','/api/products/{sku}','Delete product','Admin'],['post','/api/products/{sku}/archive','Archive product','JWT/API key + products permission'],['get','/api/products/{sku}/history','List location history','JWT/API key + products permission','Query: page,pageSize'],['post','/api/inventory/movement','Record inventory movement','JWT/API key + products permission','sku,type(IN|OUT),quantity,note?'],
   ['get','/api/employees','List employees','JWT/API key + employees permission'],['post','/api/employees','Create employee','JWT/API key + employees permission','name,position?,email?'],['get','/api/employees/{id}','Get employee','JWT/API key + employees permission'],['delete','/api/employees/{id}','Delete employee','Admin'],['post','/api/employees/import','Import employees from spreadsheet','Admin','multipart file'],['get','/api/employees/{id}/constancias','List employee certificates','JWT/API key + employees permission'],['post','/api/employees/{id}/constancias','Upload certificate','JWT/API key + employees permission','multipart title,description?,file?'],['delete','/api/constancias/{id}','Delete certificate and file','Admin'],
@@ -15,12 +15,27 @@ const routes: Route[] = [
 const error = (description: string) => ({ description, content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } });
 const accessFor = (auth: string) => {
   if (auth === 'Public') return { security: undefined, xAccess: { public: true } };
-  if (auth === 'Temporary 2FA token') return { security: [{ twoFactorToken: [] }], xAccess: { tokenType: 'temporary-2fa' } };
   const permission = auth.match(/(users|products|employees|papeleria|settings) permission/)?.[1];
   const admin = auth.includes('Admin');
   return { security: [{ bearerAuth: [] }, { cookieAuth: [] }, { apiKey: [] }], xAccess: admin ? { admin: true } : permission ? { permission } : { authenticated: true } };
 };
 const paths: Record<string, Record<string, unknown>> = {};
+const objectSchema = (properties: Record<string, unknown>, required: string[] = Object.keys(properties)) => ({ type: 'object', properties, required });
+const string = { type: 'string' };
+const successSchema = (path: string, method: Method) => {
+  if (path.endsWith('.json')) return { type: 'object', properties: { openapi: string, info: objectSchema({ title: string, version: string }), paths: { type: 'object' } }, required: ['openapi', 'info', 'paths'] };
+  if (path.endsWith('.yaml')) return string;
+  if (path === '/health' || path === '/api/health') return objectSchema({ status: string, database: string });
+  if (path === '/api/backup' && method === 'get') return objectSchema({ version: string, data: { type: 'object' } }, ['version', 'data']);
+  if (path === '/api/auth/logout' || path.includes('/2fa/verify') || path.includes('/2fa/disable')) return objectSchema({ ok: { type: 'boolean' } });
+  if (path === '/api/auth/2fa/complete' || path === '/api/auth/login' || path === '/api/auth/register') return objectSchema({ token: string, user: { type: 'object' } }, ['token', 'user']);
+  if (method === 'get' && !path.includes('{') && path !== '/api/auth/me' && path !== '/api/settings/api-key') return { type: 'array', items: { type: 'object', additionalProperties: true } };
+  if (path.includes('/import')) return objectSchema({ imported: { type: 'integer' } }, ['imported']);
+  if (path === '/api/backup/restore') return objectSchema({ message: string });
+  if (path === '/api/settings/api-key' && method === 'get') return objectSchema({ configured: { type: 'boolean' } });
+  if (path === '/api/settings/api-key' && method === 'delete') return objectSchema({ message: string });
+  return objectSchema({ id: string, message: string }, ['id']);
+};
 for (const [method, path, summary, auth = 'JWT', body] of routes) {
   const parameters = [...path.matchAll(/\{([^}]+)\}/g)].map(([_, name]) => ({ name, in: 'path', required: true, schema: { type: 'string' } }));
   if (body?.startsWith('Query:')) for (const name of body.slice(7).split(',')) parameters.push({ name, in: 'query', required: false, schema: { type: 'string' } });
@@ -48,10 +63,12 @@ for (const [method, path, summary, auth = 'JWT', body] of routes) {
     }
     if (!requestSchema) requestSchema = { type: 'object', description: body, properties, ...(required.length ? { required } : {}) };
   }
-  const requestBody = requestSchema ? { required: true, content: { [body!.startsWith('multipart') ? 'multipart/form-data' : 'application/json']: { schema: requestSchema } } } : undefined;
+  if (path === '/api/auth/2fa/complete' && requestSchema) requestSchema.description = 'El tempToken temporal se envía en este cuerpo, no en Authorization.';
+  const requestBody = requestSchema ? { required: true, content: { [body!.startsWith('multipart') ? 'multipart/form-data' : 'application/json']: { schema: requestSchema, ...(path === '/api/auth/2fa/complete' ? { example: { tempToken: 'eyJhbGciOi...', code: '123456' } } : {}) } } } : undefined;
   paths[path] ??= {};
   const access = accessFor(auth);
-  const responses: Record<string, unknown> = { 200: { description: 'Successful response', content: { 'application/json': { schema: { type: 'object', additionalProperties: true } } } } };
+  const responses: Record<string, any> = { 200: { description: 'Successful response', content: { 'application/json': { schema: successSchema(path, method) } } } };
+  if (path === '/api/auth/login') responses['429'] = { description: 'Login attempts are temporarily blocked', headers: { 'Retry-After': { description: 'Seconds until another attempt is allowed', schema: { type: 'integer' } } }, content: { 'application/json': { schema: objectSchema({ error: string, retry_after_seconds: { type: 'integer' }, blocked_until: string }, ['error', 'retry_after_seconds']) } } };
   if (access.security) responses['401'] = error('Missing or invalid authentication credentials');
   if (access.xAccess.admin || access.xAccess.permission) responses['403'] = error('Authenticated caller lacks the required role or permission');
   if (path.includes('{')) responses['404'] = error('Requested resource was not found');

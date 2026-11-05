@@ -20,3 +20,11 @@
 ## Alcance
 
 No se modificó lógica HTTP. Cambios hechos en worktree independiente basado en `48a06e9`; la copia original permanece intacta.
+
+## Corrección de hallazgos en `f885925`
+
+- Registro documentado con Bearer JWT, cookie `token` o `x-api-key` y respuestas 401/403; completar 2FA recibe `tempToken` y `code` requeridos en JSON, sin esquema de seguridad Authorization.
+- Login documenta el bloqueo 429, su cuerpo y `Retry-After`.
+- OpenAPI ahora asigna estructuras de éxito según familia de operación; tests comprueban acceso, tempToken, 429 y que los éxitos no sean objetos genéricos sin forma.
+- RED observado en tests de contrato tras agregar assertions; `npm test -- tests/openapi.test.ts` (6/6) y builds backend/frontend pasan.
+- Suite completa intentada sin `DATABASE_URL`: 18 tests pasan y los tests DB/integración no pueden ejecutarse por falta del servidor PostgreSQL requerido. No afirmar verificación PostgreSQL aislada.

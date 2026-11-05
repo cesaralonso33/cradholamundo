@@ -33,7 +33,11 @@ describe('OpenAPI contract', () => {
       expect(operation(path, 'get').security).toBeUndefined();
       expect(Object.keys(operation(path, 'get').responses)).not.toContain('401');
     }
-    expect(operation('/api/auth/2fa/complete', 'post').security).toEqual([{ twoFactorToken: [] }]);
+    expect(operation('/api/auth/register', 'post').security).toEqual([{ bearerAuth: [] }, { cookieAuth: [] }, { apiKey: [] }]);
+    expect(operation('/api/auth/register', 'post').xAccess).toEqual({ permission: 'users' });
+    expect(operation('/api/auth/2fa/complete', 'post').security).toBeUndefined();
+    expect(operation('/api/auth/2fa/complete', 'post').requestBody.content['application/json'].schema.required).toEqual(['tempToken', 'code']);
+    expect(operation('/api/auth/2fa/complete', 'post').requestBody.content['application/json'].example).toMatchObject({ tempToken: expect.any(String), code: expect.any(String) });
     expect(operation('/api/auth/me', 'get').security).toEqual([{ bearerAuth: [] }, { cookieAuth: [] }, { apiKey: [] }]);
     expect(operation('/api/products', 'get').security).toEqual([{ bearerAuth: [] }, { cookieAuth: [] }, { apiKey: [] }]);
     expect(operation('/api/users', 'get').security).toEqual([{ bearerAuth: [] }, { cookieAuth: [] }, { apiKey: [] }]);
@@ -48,6 +52,10 @@ describe('OpenAPI contract', () => {
     expect(operation('/api/users', 'get').responses['403']).toBeDefined();
     expect(operation('/api/backup/restore', 'post').responses['413']).toBeDefined();
     expect(operation('/api/auth/login', 'post').responses['413']).toBeUndefined();
+    expect(operation('/api/auth/login', 'post').responses['429'].headers['Retry-After']).toBeDefined();
+    expect(operation('/api/auth/login', 'post').responses['429'].content['application/json'].schema.properties.retry_after_seconds).toBeDefined();
+    expect(operation('/api/auth/register', 'post').responses['401']).toBeDefined();
+    expect(operation('/api/auth/register', 'post').responses['403']).toBeDefined();
   });
 
   it('provides structured access metadata and success responses for every documented operation', () => {
@@ -55,7 +63,14 @@ describe('OpenAPI contract', () => {
       for (const [method, raw] of Object.entries(methods)) {
         const operation = raw as any;
         expect(operation.xAccess, `${method.toUpperCase()} ${path} access metadata`).toBeDefined();
-        expect(operation.responses['200'], `${method.toUpperCase()} ${path} success response`).toBeDefined();
+        expect(operation.responses['200'] || operation.responses['201'], `${method.toUpperCase()} ${path} success response`).toBeDefined();
+        const success = operation.responses['200'] || operation.responses['201'];
+        const schema = success.content?.['application/json']?.schema;
+        expect(schema, `${method.toUpperCase()} ${path} success schema`).toBeDefined();
+        if (schema.type === 'object') {
+          expect(schema.properties, `${method.toUpperCase()} ${path} success properties`).toBeDefined();
+          expect(schema.additionalProperties, `${method.toUpperCase()} ${path} must not be an unconstrained generic object`).not.toBe(true);
+        }
         if (operation.xAccess.public) {
           expect(operation.security).toBeUndefined();
           expect(operation.responses['401']).toBeUndefined();

@@ -25,7 +25,34 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "openapi": {
+                      "type": "string"
+                    },
+                    "info": {
+                      "type": "object",
+                      "properties": {
+                        "title": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "title",
+                        "version"
+                      ]
+                    },
+                    "paths": {
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "openapi",
+                    "info",
+                    "paths"
+                  ]
                 }
               }
             }
@@ -46,8 +73,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true
+                  "type": "string"
                 }
               }
             }
@@ -69,7 +95,18 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "database": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "database"
+                  ]
                 }
               }
             }
@@ -94,7 +131,18 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "database": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "database"
+                  ]
                 }
               }
             }
@@ -108,9 +156,20 @@
     "/api/auth/register": {
       "post": {
         "summary": "Register a user",
-        "description": "Authentication/access: Public.",
+        "description": "Authentication/access: JWT + users permission.",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
         "xAccess": {
-          "public": true
+          "permission": "users"
         },
         "requestBody": {
           "required": true,
@@ -145,13 +204,44 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "token": {
+                      "type": "string"
+                    },
+                    "user": {
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "token",
+                    "user"
+                  ]
                 }
               }
             }
           },
           "400": {
             "description": "Invalid request body or parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authenticated caller lacks the required role or permission",
             "content": {
               "application/json": {
                 "schema": {
@@ -210,7 +300,18 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "token": {
+                      "type": "string"
+                    },
+                    "user": {
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "token",
+                    "user"
+                  ]
                 }
               }
             }
@@ -234,6 +335,39 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Login attempts are temporarily blocked",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until another attempt is allowed",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "retry_after_seconds": {
+                      "type": "integer"
+                    },
+                    "blocked_until": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "retry_after_seconds"
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -241,14 +375,9 @@
     "/api/auth/2fa/complete": {
       "post": {
         "summary": "Complete two-factor login",
-        "description": "Authentication/access: Temporary 2FA token.",
-        "security": [
-          {
-            "twoFactorToken": []
-          }
-        ],
+        "description": "Authentication/access: Public.",
         "xAccess": {
-          "tokenType": "temporary-2fa"
+          "public": true
         },
         "requestBody": {
           "required": true,
@@ -256,9 +385,9 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "description": "token,code",
+                "description": "El tempToken temporal se envía en este cuerpo, no en Authorization.",
                 "properties": {
-                  "token": {
+                  "tempToken": {
                     "type": "string"
                   },
                   "code": {
@@ -266,9 +395,13 @@
                   }
                 },
                 "required": [
-                  "token",
+                  "tempToken",
                   "code"
                 ]
+              },
+              "example": {
+                "tempToken": "eyJhbGciOi...",
+                "code": "123456"
               }
             }
           }
@@ -280,23 +413,24 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "token": {
+                      "type": "string"
+                    },
+                    "user": {
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "token",
+                    "user"
+                  ]
                 }
               }
             }
           },
           "400": {
             "description": "Invalid request body or parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing or invalid authentication credentials",
             "content": {
               "application/json": {
                 "schema": {
@@ -322,7 +456,14 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
                 }
               }
             }
@@ -355,7 +496,17 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
                 }
               }
             }
@@ -398,7 +549,17 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
                 }
               }
             }
@@ -460,7 +621,14 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
                 }
               }
             }
@@ -532,7 +700,14 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
                 }
               }
             }
@@ -584,8 +759,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
                 }
               }
             }
@@ -683,7 +861,17 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
                 }
               }
             }
@@ -764,7 +952,17 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
                 }
               }
             }
@@ -826,8 +1024,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
                 }
               }
             }
@@ -879,8 +1080,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
                 }
               }
             }
@@ -932,8 +1136,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
                 }
               }
             }
@@ -1022,7 +1229,17 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
                 }
               }
             }
@@ -1130,7 +1347,17 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
                 }
               }
             }
@@ -1211,7 +1438,17 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
                 }
               }
             }
@@ -1307,8 +1544,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
                 }
               }
             }
@@ -1398,7 +1638,17 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
                 }
               }
             }
@@ -1481,7 +1731,17 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
                 }
               }
             }
@@ -1577,7 +1837,17 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
                 }
               }
             }
@@ -1658,7 +1928,17 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
                 }
               }
             }
@@ -1731,7 +2011,17 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
                 }
               }
             }
@@ -1820,7 +2110,17 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
                 }
               }
             }
@@ -1913,7 +2213,17 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
                 }
               }
             }
@@ -1975,8 +2285,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
                 }
               }
             }
@@ -2052,7 +2365,17 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
                 }
               }
             }
@@ -2125,7 +2448,17 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
                 }
               }
             }
@@ -2196,7 +2529,17 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
                 }
               }
             }
@@ -2279,7 +2622,14 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "imported": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "imported"
+                  ]
                 }
               }
             }
@@ -2362,7 +2712,17 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
                 }
               }
             }
@@ -2469,7 +2829,17 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
                 }
               }
             }
@@ -2562,7 +2932,17 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
                 }
               }
             }
@@ -2644,8 +3024,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
                 }
               }
             }
@@ -2742,7 +3125,17 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
                 }
               }
             }
@@ -2815,7 +3208,17 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
                 }
               }
             }
@@ -2902,7 +3305,17 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
                 }
               }
             }
@@ -2985,7 +3398,17 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
                 }
               }
             }
@@ -3047,8 +3470,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
                 }
               }
             }
@@ -3124,7 +3550,17 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
                 }
               }
             }
@@ -3219,7 +3655,17 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
                 }
               }
             }
@@ -3300,7 +3746,17 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
                 }
               }
             }
@@ -3383,7 +3839,14 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "imported": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "imported"
+                  ]
                 }
               }
             }
@@ -3455,8 +3918,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
                 }
               }
             }
@@ -3530,7 +3996,17 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
                 }
               }
             }
@@ -3593,7 +4069,14 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "configured": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "configured"
+                  ]
                 }
               }
             }
@@ -3644,7 +4127,17 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
                 }
               }
             }
@@ -3695,7 +4188,14 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
                 }
               }
             }
@@ -3767,7 +4267,17 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
                 }
               }
             }
@@ -3840,7 +4350,18 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "version": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "version",
+                    "data"
+                  ]
                 }
               }
             }
@@ -3904,7 +4425,14 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
                 }
               }
             }
@@ -4002,8 +4530,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
                 }
               }
             }
