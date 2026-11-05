@@ -1,21 +1,5 @@
 <template>
   <div class="min-h-screen bg-gray-50 p-4">
-    <header class="flex flex-wrap items-center justify-between gap-2 mb-4">
-      <h1 class="text-xl font-bold">Inventario Rápido</h1>
-      <div class="flex items-center gap-3">
-        <router-link v-if="auth.hasPermission('users')" to="/users" class="text-blue-600 text-xs sm:text-sm hover:underline">Usuarios</router-link>
-        <router-link v-if="auth.hasPermission('settings')" to="/settings" class="text-blue-600 text-xs sm:text-sm hover:underline">Configuración</router-link>
-        <router-link v-if="auth.hasPermission('history')" to="/history" class="text-blue-600 text-xs sm:text-sm hover:underline">Historial</router-link>
-        <router-link v-if="auth.isAdmin.value" to="/employees" class="text-blue-600 text-xs sm:text-sm hover:underline">Empleados</router-link>
-        <router-link v-if="auth.isAdmin.value" to="/roles" class="text-blue-600 text-xs sm:text-sm hover:underline">Roles</router-link>
-        <router-link v-if="auth.isAdmin.value" to="/audit" class="text-blue-600 text-xs sm:text-sm hover:underline">Auditoría</router-link>
-        <router-link v-if="auth.hasPermission('papeleria')" to="/papeleria" class="text-blue-600 text-xs sm:text-sm hover:underline">Papelería</router-link>
-        <router-link v-if="auth.hasPermission('api')" to="/api-docs" class="text-blue-600 text-xs sm:text-sm hover:underline">API</router-link>
-        <SyncStatusBadge />
-        <button @click="logout" class="text-sm text-gray-600 hover:underline">Salir ({{ auth.user.value?.username }})</button>
-      </div>
-    </header>
-
     <section class="bg-white p-4 rounded shadow mb-4">
       <QuickInventoryForm @captured="onCapture" />
     </section>
@@ -43,27 +27,19 @@ import { shallowRef, ref, watch, onMounted, onUnmounted } from "vue";
 import { db } from "../db";
 import { liveQuery } from "dexie";
 import { useAuth } from "../auth";
-import { useRouter } from "vue-router";
 import { apiListProducts } from "../api";
 import { syncPendingCaptures } from "../sync";
 import QuickInventoryForm from "../components/QuickInventoryForm.vue";
 import RecentCapturesTable from "../components/RecentCapturesTable.vue";
-import SyncStatusBadge from "../components/SyncStatusBadge.vue";
 import PaginationBar from "../components/PaginationBar.vue";
 import InventoryMovementPanel from "../components/InventoryMovementPanel.vue";
 
 const auth = useAuth();
-const router = useRouter();
 const rows = shallowRef<any[]>([]);
 const totalRows = ref(0);
 const page = ref(1);
 const pageSize = ref(10);
 let sub: any;
-
-function logout() {
-  auth.logout();
-  router.push("/login");
-}
 
 function subscribe() {
   if (auth.isAdmin.value) return;
