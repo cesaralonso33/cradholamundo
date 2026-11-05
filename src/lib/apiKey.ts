@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
-import { getSetting } from "./settings.js";
+import { db } from '../db/client.js';
+import { settingsRepository } from '../db/repositories/index.js';
 
 export function hashApiKey(key: string) {
   return createHash("sha256").update(key).digest("hex");
@@ -10,9 +11,10 @@ export function generateApiKey() {
 }
 
 export async function validateApiKey(key: string): Promise<boolean> {
-  const enabled = await getSetting("api_enabled");
-  if (enabled !== "true") return false;
-  const storedHash = await getSetting("api_key_hash");
-  if (!storedHash) return false;
-  return storedHash === hashApiKey(key);
+  const [enabled, storedHash] = await Promise.all([
+    settingsRepository.get(db, 'api_enabled'),
+    settingsRepository.get(db, 'api_key_hash'),
+  ]);
+  if (enabled?.value !== 'true' || !storedHash?.value) return false;
+  return storedHash.value === hashApiKey(key);
 }
