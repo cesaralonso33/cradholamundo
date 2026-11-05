@@ -257,7 +257,7 @@ export function apiListEmployees() {
   return request<ListResponse<Employee>>("/api/employees");
 }
 
-export function apiCreateEmployee(payload: any) {
+export function apiCreateEmployee(payload: Pick<Employee, "name" | "position" | "email">) {
   return request("/api/employees", { method: "POST", body: payload });
 }
 

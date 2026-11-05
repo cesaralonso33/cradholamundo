@@ -4,7 +4,11 @@ import { employeeSchema, loginSchema, papeleriaSchema, productCaptureSchema, set
 describe("frontend form schemas", () => {
   it("requires a login password", () => expect(loginSchema.safeParse({ password: "" }).success).toBe(false));
   it("requires a SKU and product name", () => expect(productCaptureSchema.safeParse({ sku: " ", name: "" }).success).toBe(false));
-  it("requires employee identity fields", () => expect(employeeSchema.safeParse({ name: "", employee_number: "" }).success).toBe(false));
+  it("accepts the employee payload produced by the form", () => {
+    const formPayload = { name: "Ana López", position: "Analista", email: "ana@example.com" };
+    expect(employeeSchema.safeParse(formPayload).success).toBe(true);
+  });
+  it("requires an employee name", () => expect(employeeSchema.safeParse({ name: "", position: "", email: "" }).success).toBe(false));
   it("accepts zero initial stock but rejects negative stationery quantities", () => {
     expect(papeleriaSchema.safeParse({ name: "Papel", quantity: 0 }).success).toBe(true);
     expect(papeleriaSchema.safeParse({ name: "Papel", quantity: -1 }).success).toBe(false);
