@@ -1,12 +1,17 @@
 import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { Client } from 'pg';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { Pool } from 'pg';
+import * as schema from '../../src/db/schema.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 const baseUrl = process.env.DATABASE_URL;
 let isolatedUrl: string;
 let databaseName: string;
 let client: Client;
+let pool: Pool;
+let orm: ReturnType<typeof drizzle<typeof schema>>;
 
 beforeAll(async () => {
   // Let the tests fail individually with an actionable error instead of reporting skips.
@@ -36,11 +41,14 @@ beforeAll(async () => {
   });
   client = new Client({ connectionString: isolatedUrl });
   await client.connect();
+  pool = new Pool({ connectionString: isolatedUrl });
+  orm = drizzle(pool, { schema });
 }, 60_000);
 
 afterAll(async () => {
   if (!baseUrl || !databaseName) return;
   await client?.end();
+  await pool?.end();
   const admin = new Client({ connectionString: baseUrl });
   await admin.connect();
   try {
@@ -147,5 +155,38 @@ describe('initial migration on a disposable PostgreSQL database', () => {
     } finally {
       await db.query('ROLLBACK');
     }
+  });
+
+  it('omits sensitive user fields by default and includes them only on explicit administrative export', async () => {
+    const db = requireDbClient();
+    const { backupRepository } = await import('../../src/db/repositories/index.js');
+    await db.query(`INSERT INTO "User" (id, username, password, totp_secret, updated_at) VALUES ('backup-user', 'backup-test', 'test-hash', 'test-totp', now())`);
+    const safe = await backupRepository.exportAll(orm);
+    expect(safe.users[0]).not.toHaveProperty('password');
+    expect(safe.users[0]).not.toHaveProperty('totp_secret');
+
+    const administrative = await backupRepository.exportAll(orm, { includeSensitiveUserData: true });
+    expect(administrative.users[0]).toMatchObject({ password: 'test-hash', totp_secret: 'test-totp' });
+  });
+
+  it('commits inventory movement and stock update atomically', async () => {
+    const db = requireDbClient();
+    const { recordMovement } = await import('../../src/services/inventory.js');
+    await db.query(`INSERT INTO "Product" (id, sku, name, quantity, updated_at) VALUES ('movement-product', 'movement-sku', 'Movement test', 2, now())`);
+    await recordMovement(orm, { sku: 'movement-sku', type: 'OUT', quantity: 1 });
+    expect((await db.query(`SELECT quantity FROM "Product" WHERE id='movement-product'`)).rows[0].quantity).toBe(1);
+    expect((await db.query(`SELECT count(*)::int AS count FROM "InventoryMovement" WHERE product_id='movement-product'`)).rows[0].count).toBe(1);
+    await expect(recordMovement(orm, { sku: 'movement-sku', type: 'OUT', quantity: 2 })).rejects.toMatchObject({ code: 'INSUFFICIENT_STOCK' });
+    expect((await db.query(`SELECT count(*)::int AS count FROM "InventoryMovement" WHERE product_id='movement-product'`)).rows[0].count).toBe(1);
+  });
+
+  it('closes an order and reports a concurrent/already-closed state explicitly', async () => {
+    const db = requireDbClient();
+    const { closeOrder } = await import('../../src/services/papeleria.js');
+    await db.query(`INSERT INTO "User" (id, username, password, updated_at) VALUES ('close-user', 'close-test', 'test-hash', now())`);
+    await db.query(`INSERT INTO "PapeleriaOrder" (id, folio, user_id, status, updated_at) VALUES ('close-order', 'close-folio', 'close-user', 'OPEN', now())`);
+    const closed = await closeOrder(orm, 'close-order', 'close-test');
+    expect(closed).toMatchObject({ status: 'CLOSED', closed_by: 'close-test' });
+    await expect(closeOrder(orm, 'close-order', 'close-test')).rejects.toMatchObject({ code: 'CONFLICT' });
   });
 });

@@ -5,7 +5,7 @@ const orderItemsSchema = z.array(z.object({ itemId: z.string().min(1), quantity:
 export type NormalizedOrderItem = z.infer<typeof orderItemsSchema>[number];
 export const normalizeOrderItems = (input: unknown): NormalizedOrderItem[] => orderItemsSchema.parse(input);
 export function assertOrderCanClose(status: string): void {
-  if (status !== 'OPEN') throw Object.assign(new Error('order is not open'), { code: 'INVALID_STATE' });
+  if (status !== 'OPEN') throw Object.assign(new Error('order is not open'), { code: 'CONFLICT' });
 }
 export async function closeOrder(database: Database, id: string, username: string) {
   const { papeleriaOrderRepository } = await import('../db/repositories/index.js');
@@ -13,6 +13,8 @@ export async function closeOrder(database: Database, id: string, username: strin
     const order = await papeleriaOrderRepository.findById(tx, id);
     if (!order) throw Object.assign(new Error('order not found'), { code: 'NOT_FOUND' });
     assertOrderCanClose(order.status);
-    return papeleriaOrderRepository.close(tx, id, username);
+    const closed = await papeleriaOrderRepository.close(tx, id, username);
+    if (!closed) throw Object.assign(new Error('order was closed concurrently'), { code: 'CONFLICT' });
+    return closed;
   });
 }
