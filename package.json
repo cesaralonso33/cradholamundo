@@ -14,7 +14,10 @@
     "perf:seed": "node scripts/perf-seed.mjs",
     "perf:test": "node scripts/perf-test.mjs",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:security": "vitest run tests/security",
+    "test:e2e:install": "playwright install chromium"
   },
   "keywords": [],
   "author": "",
@@ -40,6 +43,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^26.6.6",

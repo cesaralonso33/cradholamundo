@@ -14,7 +14,7 @@
 - [x] Task 3: capa inicial tipada de repositorios Drizzle y servicios; reglas de movimientos/cierre, errores y validación centralizados. Migración de rutas sigue pendiente.
 - [x] Task 4 (auth/administración): rutas auth, users y roles en Drizzle; utilidades compartidas de autenticación, permisos, auditoría e intentos de login migradas; tests de integración con PostgreSQL aislado.
 - [x] Task 4 (inventario): productos, historial, archivo y movimientos migrados a Drizzle con Zod, errores centralizados y pruebas HTTP de integración contra PostgreSQL aislado; validada la concurrencia de salidas sin permitir stock negativo.
-- [ ] Pruebas de integración, seguridad y E2E.
+- [x] Task 6 (parcial): configuración Playwright y checks de seguridad; E2E smoke contra PostgreSQL aislado. Flujos UI transaccionales, 2FA y parte de seguridad requieren completar/reejecutar; detalle en informe `e2e-security-report.md`.
 - [ ] Verificación Docker y documentación final.
 
 ## Registro de decisiones
@@ -52,3 +52,5 @@
 2026-11-05 — Task 5 IMPORTANT empleados: el payload permitido de `apiCreateEmployee` quedó tipado con el modelo `Employee` (`name`, `position`, `email`), y el test de schema ahora reproduce los campos reales del formulario y verifica que nombre sí sea requerido. El esquema actual de HEAD ya no exigía `employee_number`, aunque el test previo no lo detectaba; por ello RED no pudo reproducirse contra el esquema previo ausente del checkout. Sin cambios backend/original. Informe: `frontend-report.md`.
 
 - [x] Task 5 (frontend): errores HTTP tipados, invalidación de sesión 401, navegación por permisos, Zod en formularios prioritarios y estados de carga/error para empleados/papelería. Dexie/offline sync y pantallas existentes preservadas. Vitest frontend 13/13 y build correctos; validación live de health sin mutaciones por no poder confirmar que el backend disponible estuviera aislado. Cobertura de componentes/E2E pendiente. Informe: .superpowers/sdd/2026-11-05-modernizacion-inventario/frontend-report.md.
+
+2026-11-05 — Task 6: Playwright con Chromium instalado y smoke E2E (login válido/inválido, navegación protegida y pantallas inventario/papelería/empleados/settings) en backend/frontend reales contra PostgreSQL 14 desechable. 3/3 smoke aprobados. Seguridad live parcial: expiración JWT, cookie HttpOnly, input malformado, autorización, headers/OpenAPI y CORS comprobados; el caso Retry-After observado, pero suite con DB contaminada dejó sin validar un pase conjunto reproducible. Pruebas de operaciones completas UI, 2FA, restore concurrente y revisión exhaustiva de permisos no ejecutadas. Auditoría detecta 4 moderadas transitivas; no hay mitigación segura automática. Informe: `.superpowers/sdd/2026-11-05-modernizacion-inventario/e2e-security-report.md`.

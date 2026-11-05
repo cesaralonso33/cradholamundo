@@ -2,6 +2,8 @@ node_modules/
 dist/
 frontend/dist/
 frontend/node_modules/
+playwright-report/
+test-results/
 .env
 .env.*.local
 *.log

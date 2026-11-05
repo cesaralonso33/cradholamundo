@@ -7,9 +7,9 @@ export default defineConfig({
     port: 55896,
     strictPort: true,
     proxy: {
-      "/api": "http://localhost:3000",
-      "/uploads": "http://localhost:3000",
-      "/health": "http://localhost:3000",
+      "/api": process.env.API_PROXY_TARGET || "http://localhost:3000",
+      "/uploads": process.env.API_PROXY_TARGET || "http://localhost:3000",
+      "/health": process.env.API_PROXY_TARGET || "http://localhost:3000",
     },
   },
 });

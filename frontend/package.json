@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:e2e": "npm --prefix .. run test:e2e",
     "test:watch": "vitest"
   },
   "devDependencies": {
