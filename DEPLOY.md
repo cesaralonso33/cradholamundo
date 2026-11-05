@@ -1,11 +1,10 @@
 # Despliegue rápido con Docker
 
-Esta configuración despliega frontend y backend usando un PostgreSQL que ya existe en el VPS; no crea otro contenedor de base de datos.
+Esta configuración despliega frontend, backend y un PostgreSQL propio. PostgreSQL se publica en el puerto externo `55432` por defecto para evitar conflictos con otro PostgreSQL del VPS.
 
 ## Requisitos
 
 - Docker Engine + Docker Compose (o Docker Desktop en Windows/Mac).
-- PostgreSQL existente con la base `inventario` y credenciales válidas.
 - Puerto 55896 libre (o cambia el puerto en `docker-compose.yml`).
 
 ## Pasos
@@ -14,16 +13,18 @@ Esta configuración despliega frontend y backend usando un PostgreSQL que ya exi
 2. Crea el archivo `.env` a partir del ejemplo:
 
 ```bash
-cp .env.vps.example .env
+cp .env.docker.example .env
 ```
 
 Edita `.env` y sustituye obligatoriamente:
 - `APP_PORT` (por defecto `55896`)
-- `DATABASE_URL` (debe apuntar al PostgreSQL existente, base `inventario`)
+- `POSTGRES_PORT` (por defecto `55432`)
+- `POSTGRES_PASSWORD`
+- `DATABASE_URL` (debe usar el host interno `db`, base `inventario`)
 - `JWT_SECRET` (usa una cadena larga y aleatoria)
 - `ADMIN_PASSWORD` (contraseña inicial del administrador)
 
-`DATABASE_URL` debe apuntar al PostgreSQL existente. Si PostgreSQL publica el puerto del VPS, usa `host.docker.internal`; si el contenedor de PostgreSQL está en una red Docker compartida, usa su nombre y conecta esa red externa al Compose. Codifica cada carácter reservado de la contraseña (`@` → `%40`, `:` → `%3A`, `/` → `%2F`, `#` → `%23`, `%` → `%25`). El Compose falla intencionadamente si falta `DATABASE_URL` o cualquiera de los secretos. No publiques `.env`.
+`DATABASE_URL` debe usar `db:5432`, porque ese es el puerto interno entre contenedores. El puerto externo para conexiones administrativas es `55432`. Codifica cada carácter reservado de la contraseña (`@` → `%40`, `:` → `%3A`, `/` → `%2F`, `#` → `%23`, `%` → `%25`). El Compose falla intencionadamente si falta `DATABASE_URL` o cualquiera de los secretos. No publiques `.env`.
 
 3. Construye y levanta todo:
 
@@ -70,6 +71,7 @@ El volumen `uploads` requiere respaldo independiente. Nunca uses `down -v` para 
 
 ## Datos persistentes
 
+- Base de datos: volumen `pgdata`.
 - Archivos de constancias: volumen `uploads`.
 
 No borres estos volúmenes si quieres conservar la información.
