@@ -9,6 +9,9 @@ from __future__ import annotations
 
 import argparse
 import posixpath
+import shutil
+import subprocess
+import tempfile
 import sys
 from pathlib import Path
 
@@ -57,11 +60,39 @@ def files_to_upload(source: Path) -> list[Path]:
 def load_key(path: Path):
     try:
         return paramiko.PKey.from_path(str(path))
-    except Exception as exc:
-        raise RuntimeError(
-            "No se pudo leer el .ppk. Usa una versión reciente de Paramiko o conviértelo con "
-            "PuTTYgen: Conversions > Export OpenSSH key."
-        ) from exc
+    except Exception as original:
+        if path.suffix.lower() != ".ppk":
+            raise RuntimeError(f"No se pudo leer la clave privada: {path}") from original
+
+        puttygen = shutil.which("puttygen")
+        if not puttygen:
+            for candidate in (
+                Path(r"C:\Program Files\PuTTY\puttygen.exe"),
+                Path(r"C:\Program Files (x86)\PuTTY\puttygen.exe"),
+            ):
+                if candidate.exists():
+                    puttygen = str(candidate)
+                    break
+        if not puttygen:
+            raise RuntimeError(
+                "Paramiko no lee este .ppk directamente. Instala PuTTYgen o conviértelo una vez: "
+                "PuTTYgen > Load private key > Conversions > Export OpenSSH key."
+            ) from original
+
+        with tempfile.TemporaryDirectory(prefix="vps-key-") as temp_dir:
+            converted = Path(temp_dir) / "id_openssh"
+            result = subprocess.run(
+                [puttygen, str(path), "-O", "private-openssh-new", "-o", str(converted)],
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode != 0:
+                detail = (result.stderr or result.stdout).strip()
+                raise RuntimeError(
+                    "PuTTYgen no pudo convertir el .ppk. Si tiene contraseña, conviértelo manualmente "
+                    f"con PuTTYgen. Detalle: {detail}"
+                ) from original
+            return paramiko.PKey.from_path(str(converted))
 
 
 def remote_parent(sftp: paramiko.SFTPClient, path: str) -> None:
