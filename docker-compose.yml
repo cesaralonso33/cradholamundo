@@ -1,25 +1,9 @@
 services:
-  db:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: inventario
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env}
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d inventario"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-      start_period: 10s
-
   backend:
     build: .
     restart: unless-stopped
     environment:
-      DATABASE_URL: ${DATABASE_URL:?Define DATABASE_URL en .env con host db}
+      DATABASE_URL: ${DATABASE_URL:?Define DATABASE_URL en .env para PostgreSQL existente}
       JWT_SECRET: ${JWT_SECRET:?Define JWT_SECRET en .env}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Define ADMIN_PASSWORD en .env}
       LOGIN_MAX_FAILURES: ${LOGIN_MAX_FAILURES:-4}
@@ -29,9 +13,8 @@ services:
       NODE_ENV: production
     volumes:
       - uploads:/app/uploads
-    depends_on:
-      db:
-        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 15s
@@ -55,5 +38,4 @@ services:
       start_period: 10s
 
 volumes:
-  pgdata:
   uploads:

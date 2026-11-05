@@ -2,7 +2,7 @@
 
 Solo para desarrollo/prueba local con datos ficticios. Requiere Docker Engine/Desktop y Compose v2.
 
-1. Copiar `.env.docker.example` a `.env` y sustituir `POSTGRES_PASSWORD`, `DATABASE_URL`, `JWT_SECRET` (32+ caracteres aleatorios), `ADMIN_PASSWORD` y `APP_PORT`. `DATABASE_URL` debe usar el host `db` y la contraseña de `POSTGRES_PASSWORD` codificada como componente URI. Ejemplo ficticio: para `clave@con:reservados`, usa `clave%40con%3Areservados` en `postgresql://postgres:clave%40con%3Areservados@db:5432/inventario?schema=public` (`@` → `%40`, `:` → `%3A`, `/` → `%2F`, `#` → `%23`, `%` → `%25`). No reutilizar ejemplos ni publicar `.env`.
+1. Para este Compose, PostgreSQL debe existir fuera del proyecto. Copia `.env.vps.example` a `.env` y sustituye `DATABASE_URL`, `JWT_SECRET` (32+ caracteres aleatorios), `ADMIN_PASSWORD` y `APP_PORT`. Si el PostgreSQL publica `5432` en el VPS, usa `host.docker.internal`; si comparte una red Docker existente, usa el nombre del contenedor y esa red. Codifica la contraseña como componente URI (`@` → `%40`, `:` → `%3A`, `/` → `%2F`, `#` → `%23`, `%` → `%25`). No publiques `.env`.
 2. Construir e iniciar: `docker compose up --build -d`.
 3. Esperar que `docker compose ps` muestre `healthy` en `db`, `backend` y `frontend`; probar `curl http://localhost:<APP_PORT>/health`. El backend espera PostgreSQL saludable y frontend espera backend saludable.
 4. Las migraciones Drizzle versionadas se aplican al arrancar el backend; no se ejecuta `db push` ni operación destructiva.
