@@ -15,7 +15,7 @@ test("main screens require a real admin session and remain navigable", async ({ 
   const created = await page.request.post("/api/products", { data: { sku, name: "E2E movement product", quantity: 1 } });
   expect(created.ok()).toBeTruthy();
   await page.reload();
-  await page.getByLabel("Producto").selectOption(sku);
+  await page.getByLabel("Producto", { exact: true }).selectOption(sku);
   await page.getByLabel("Tipo de movimiento").selectOption("IN");
   await page.getByLabel("Cantidad", { exact: true }).fill("2");
   await page.getByRole("button", { name: "Registrar movimiento" }).click();
