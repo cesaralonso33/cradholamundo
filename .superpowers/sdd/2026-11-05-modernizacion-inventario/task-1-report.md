@@ -34,3 +34,10 @@ Los comandos completos, mensajes relevantes y protocolo de repetición están en
 4. Cookie `secure:false` y dependencias moderadas frontend necesitan seguimiento.
 
 Commit: se registra el hash en la respuesta final.
+
+## Corrección de revisión de Task 1
+
+- Archivo actualizado: `MATRIZ_FUNCIONALIDADES.md`.
+- Verificación de fuente: leídos `src/routes/employees.ts` (rutas y `preHandler` líneas 13–142) y `src/routes/papeleria.ts` (rutas y guardas líneas 17–244). Corregida creación de empleados (`POST /api/employees`, `authenticate` + `requirePermission("employees")`), importación de empleados (`POST /api/employees/import`, `authenticate` + `adminOnly`) y alta de artículo (`POST /api/papeleria`, `authenticate` + `adminOnly`). Se expandieron las operaciones de ambos módulos con métodos y guards declarados.
+- Comandos/verificaciones ejecutados: `git diff --check` (sin errores); `Select-String` comprobó que la matriz contiene rutas de creación/importación y guards citados; lectura manual del diff comparada con los handlers.
+- Resultado: los guards documentados coinciden con el código observado. No se modificó código de producción; no se repitieron builds/tests porque el cambio es documental.
