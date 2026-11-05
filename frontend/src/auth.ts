@@ -1,5 +1,6 @@
 import { ref, computed } from "vue";
 import { complete2faRequest, loginRequest, logoutRequest, meRequest, registerRequest } from "./api";
+import { getStored, removeStored, setStored } from "./storage";
 
 const USER_KEY = "inv_user";
 
@@ -14,7 +15,7 @@ export interface AuthUser {
 
 function loadUser(): AuthUser | null {
   try {
-    const raw = localStorage.getItem(USER_KEY);
+    const raw = getStored(USER_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     return { ...parsed, permissions: Array.isArray(parsed.permissions) ? parsed.permissions : [] };
@@ -28,8 +29,8 @@ const user = ref<AuthUser | null>(loadUser());
 if (typeof window !== "undefined") {
   window.addEventListener("inventory:unauthorized", () => {
     user.value = null;
-    localStorage.removeItem(USER_KEY);
-    localStorage.removeItem("inv_token");
+    removeStored(USER_KEY);
+    removeStored("inv_token");
   });
 }
 
@@ -45,9 +46,9 @@ export function useAuth() {
 
   function setUser(u: AuthUser | null) {
     user.value = u ? { ...u, permissions: Array.isArray(u.permissions) ? u.permissions : [] } : null;
-    if (u) localStorage.setItem(USER_KEY, JSON.stringify(user.value));
-    else localStorage.removeItem(USER_KEY);
-    localStorage.removeItem("inv_token");
+    if (u) setStored(USER_KEY, JSON.stringify(user.value));
+    else removeStored(USER_KEY);
+    removeStored("inv_token");
   }
 
   async function init() {
