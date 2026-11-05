@@ -1,11 +1,12 @@
-import { prisma } from "./prisma.js";
+import { db } from '../db/client.js';
+import { settingsRepository } from '../db/repositories/index.js';
 
 const cache = new Map<string, string>();
 let loaded = false;
 
 async function ensureLoaded() {
   if (!loaded) {
-    const rows = await prisma.setting.findMany();
+    const rows = await settingsRepository.getAll(db);
     rows.forEach((r) => cache.set(r.key, r.value));
     loaded = true;
   }

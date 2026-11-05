@@ -1,30 +1,22 @@
-import type { FastifyInstance } from "fastify";
-import { prisma } from "../lib/prisma.js";
-import { authenticate, adminOnly } from "../lib/auth.js";
+import type { FastifyInstance } from 'fastify';
+import { z } from 'zod';
+import { db } from '../db/client.js';
+import { auditRepository } from '../db/repositories/index.js';
+import { authenticate, adminOnly } from '../lib/auth.js';
+
+const querySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(50),
+  action: z.string().trim().max(100).optional(),
+  username: z.string().trim().max(100).optional(),
+  entityType: z.string().trim().max(100).optional(),
+});
 
 export async function auditRoutes(app: FastifyInstance) {
-  app.get("/api/audit-logs", { preHandler: [authenticate, adminOnly] }, async (req) => {
-    const query = req.query as any;
-    const page = Math.max(1, Number(query.page) || 1);
-    const pageSize = Math.min(100, Math.max(1, Number(query.pageSize) || 50));
-    const action = query.action ? String(query.action).trim() : undefined;
-    const username = query.username ? String(query.username).trim() : undefined;
-    const entityType = query.entityType ? String(query.entityType).trim() : undefined;
-
-    const where: any = {};
-    if (action) where.action = action;
-    if (username) where.username = { contains: username, mode: "insensitive" };
-    if (entityType) where.entity_type = entityType;
-
-    const [items, total] = await Promise.all([
-      prisma.auditLog.findMany({
-        where,
-        orderBy: { created_at: "desc" },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-      }),
-      prisma.auditLog.count({ where }),
-    ]);
-    return { items, total, page, pageSize };
+  app.get('/api/audit-logs', { preHandler: [authenticate, adminOnly] }, async (req, reply) => {
+    const parsed = querySchema.safeParse(req.query);
+    if (!parsed.success) return reply.code(400).send({ error: 'invalid input' });
+    const { page, pageSize, action, username, entityType } = parsed.data;
+    return auditRepository.list(db, { page, pageSize, action, username, entityType });
   });
 }

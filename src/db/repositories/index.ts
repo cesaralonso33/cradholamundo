@@ -101,5 +101,31 @@ export const backupRepository = {
     const [allSettings, allUsers, allProducts, movements, history, allEmployees, allConstancias, allItems, orders, orderItems] = await Promise.all([executor.select().from(settings), userQuery, executor.select().from(products), executor.select().from(inventoryMovements), executor.select().from(locationHistories), executor.select().from(employees), executor.select().from(constancias), executor.select().from(papeleriaItems), executor.select().from(papeleriaOrders), executor.select().from(papeleriaOrderItems)]);
     return { settings: allSettings, users: allUsers, products: allProducts, movements, locationHistory: history, employees: allEmployees, constancias: allConstancias, papeleriaItems: allItems, orders, orderItems };
   },
+  restore: (data: Record<string, Array<Record<string, unknown>>>) => db.transaction(async tx => {
+    const tableMap = { settings, users, products, movements: inventoryMovements, locationHistory: locationHistories, employees, constancias, papeleriaItems, orders: papeleriaOrders, orderItems: papeleriaOrderItems } as const;
+    const allowedKeys = Object.keys(tableMap);
+    if (Object.keys(data).some(key => !allowedKeys.includes(key)) || Object.values(data).some(value => !Array.isArray(value))) throw Object.assign(new Error('invalid backup'), { code: 'INVALID_STATE' });
+    const arrays = data as Record<string, any[]>;
+    for (const key of ['settings', 'users', 'products', 'movements', 'locationHistory', 'employees', 'constancias', 'papeleriaItems', 'orders', 'orderItems']) {
+      const rows = arrays[key] ?? [];
+      if (rows.some(row => !row || typeof row !== 'object' || Array.isArray(row))) throw Object.assign(new Error('invalid backup'), { code: 'INVALID_STATE' });
+    }
+    await tx.delete(papeleriaOrderItems); await tx.delete(papeleriaOrders); await tx.delete(constancias); await tx.delete(employees);
+    await tx.delete(locationHistories); await tx.delete(inventoryMovements); await tx.delete(papeleriaItems); await tx.delete(products); await tx.delete(users); await tx.delete(settings);
+    const insert = async (table: any, key: string, columns: string[]) => {
+      const rows = arrays[key] ?? [];
+      if (rows.length) await tx.insert(table).values(rows.map(row => Object.fromEntries(columns.filter(column => column in row).map(column => [column, row[column]]))));
+    };
+    await insert(settings, 'settings', ['key', 'value']);
+    await insert(users, 'users', ['id', 'username', 'email', 'password', 'role', 'totp_secret', 'two_factor_enabled', 'created_at', 'updated_at']);
+    await insert(products, 'products', ['id', 'sku', 'name', 'category', 'location', 'quantity', 'min_stock', 'created_at', 'updated_at']);
+    await insert(inventoryMovements, 'movements', ['id', 'product_id', 'type', 'quantity', 'note', 'created_at']);
+    await insert(locationHistories, 'locationHistory', ['id', 'product_id', 'from_location', 'to_location', 'changed_by', 'created_at']);
+    await insert(employees, 'employees', ['id', 'name', 'position', 'email', 'created_at', 'updated_at']);
+    await insert(constancias, 'constancias', ['id', 'employee_id', 'title', 'description', 'file_path', 'file_name', 'created_at']);
+    await insert(papeleriaItems, 'papeleriaItems', ['id', 'name', 'unit', 'quantity', 'created_at', 'updated_at']);
+    await insert(papeleriaOrders, 'orders', ['id', 'folio', 'user_id', 'status', 'created_at', 'updated_at', 'closed_at', 'closed_by']);
+    await insert(papeleriaOrderItems, 'orderItems', ['id', 'order_id', 'papeleria_item_id', 'quantity', 'note']);
+  }),
   transaction: <T>(work: (tx: Parameters<Parameters<Database['transaction']>[0]>[0]) => Promise<T>) => db.transaction(work),
 };
