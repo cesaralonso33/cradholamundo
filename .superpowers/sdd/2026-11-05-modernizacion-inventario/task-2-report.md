@@ -33,10 +33,10 @@ La fuente autoritativa fue `prisma/schema.prisma`; las migraciones históricas n
 
 ## Fix report — re-revisión de aislamiento dotenv
 
-- **RED reproducido:** con `DATABASE_URL` eliminado y `DOTENV_CONFIG_PATH` apuntando a un archivo temporal que definía una URL ficticia, la prueba anterior aceptó `db:check` (salida 0) y `db:migrate` cargó la URL del archivo en vez de reportar la variable ausente.
-- **Cambio mínimo:** `tests/db/config.test.ts` ahora ejecuta cada comando en un `cwd` temporal sin `.env`, elimina `DATABASE_URL` y `DOTENV_CONFIG_PATH` del entorno hijo y pasa la ruta absoluta de `drizzle.config.ts`. La comprobación del archivo `.env` temporal asegura la condición de aislamiento.
-- **GREEN:** la prueba de configuración pasó (2/2) aun con el `DOTENV_CONFIG_PATH` hostil presente en el proceso padre. Con PostgreSQL aislado en `127.0.0.1:55433`, se aplicó `npm run db:migrate` desde cero; luego `npm run test:db` pasó (9/9), `npm test` (10/10), `npm run build` y `npm run db:check` pasaron.
-- El cluster temporal `pg-task2-rereview` se detuvo y eliminó después de la verificación. No se modificaron rutas ni el proyecto original.
+- **RED reproducido:** la reproducción inicial con `DOTENV_CONFIG_PATH` ficticio ejecutó directamente `drizzle-kit`, no los scripts npm; mostró que dotenv podía reinyectar la URL y por eso no demostraba el comportamiento de `npm run db:*`. Antes del arreglo, la nueva aserción que exige el encabezado npm falló para ambos comandos.
+- **Cambio mínimo:** `tests/db/config.test.ts` invoca ahora los comandos reales con `npm --prefix <repo> run db:check` y `npm --prefix <repo> run db:migrate`, desde un `cwd` temporal que no tiene `.env`. `DATABASE_URL` se elimina y `DOTENV_CONFIG_PATH` apunta a un archivo temporal vacío, evitando que se cargue un `.env` del repositorio aunque npm ejecute el script allí. Se comprueba el encabezado del script npm y el mensaje explícito de URL ausente.
+- **GREEN:** ambas pruebas de configuración pasaron con `DOTENV_CONFIG_PATH` hostil en el entorno padre, verificando los scripts npm bajo el entorno hijo aislado. En PostgreSQL temporal `127.0.0.1:55434` se aplicó `npm run db:migrate` desde cero; `npm run test:db` pasó (9/9), `npm test` (10/10), `npm run build` y `npm run db:check` pasaron.
+- El cluster temporal `pg-task2-final` se detuvo y eliminó después de la verificación. No se modificaron rutas ni el proyecto original.
 
 ## Alcance pendiente
 
