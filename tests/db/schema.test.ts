@@ -3,7 +3,7 @@ import { getTableConfig } from 'drizzle-orm/pg-core';
 import * as schema from '../../src/db/schema.js';
 
 describe('Drizzle schema', () => {
-  it('defines all twelve Prisma entities with mapped SQL table names', () => {
+  it('defines all thirteen Prisma entities with mapped SQL table names', () => {
     const tables = Object.values(schema).filter((value) =>
       typeof value === 'object' && value !== null && 'enableRLS' in value,
     );

@@ -12,6 +12,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:check": "drizzle-kit check",
+    "test:db": "vitest run tests/db",
     "perf:seed": "node scripts/perf-seed.mjs",
     "perf:test": "node scripts/perf-test.mjs",
     "test": "vitest run",
