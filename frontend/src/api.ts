@@ -241,7 +241,7 @@ export async function apiDownloadBackup(includeSensitive = false): Promise<Blob>
 }
 
 export function apiRestoreBackup(data: any) {
-  return request("/api/backup/restore", { method: "POST", body: { data } });
+  return request("/api/backup/restore", { method: "POST", body: data });
 }
 
 // ---- Settings ----

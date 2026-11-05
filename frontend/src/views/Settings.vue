@@ -410,7 +410,7 @@ async function restoreBackup(event: any) {
       event.target.value = "";
       return;
     }
-    await apiRestoreBackup(parsed.data);
+    await apiRestoreBackup(parsed);
     backupMsg.value = "Respaldo restaurado correctamente.";
   } catch (e: any) {
     backupErr.value = true;
