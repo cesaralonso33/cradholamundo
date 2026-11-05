@@ -1,0 +1,185 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  sku         String   @unique
+  name        String
+  category    String?
+  location    String?
+  quantity    Int      @default(0)
+  min_stock   Int      @default(0)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  movements   InventoryMovement[]
+  locationHistories LocationHistory[]
+
+  @@index([sku])
+  @@index([location, updated_at])
+}
+
+model InventoryMovement {
+  id          String   @id @default(cuid())
+  product_id  String
+  type        String
+  quantity    Int
+  note        String?
+  created_at  DateTime @default(now())
+
+  product     Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@index([product_id])
+  @@index([created_at])
+}
+
+model LocationHistory {
+  id            String   @id @default(cuid())
+  product_id    String
+  from_location String?
+  to_location   String
+  changed_by    String
+  created_at    DateTime @default(now())
+
+  product       Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@index([product_id, created_at])
+}
+
+model User {
+  id                 String   @id @default(cuid())
+  username           String   @unique
+  email              String?  @unique
+  password           String
+  role               String   @default("user")
+  totp_secret        String?
+  two_factor_enabled Boolean  @default(false)
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  papeleriaOrders    PapeleriaOrder[]
+  auditLogs          AuditLog[]
+
+  @@index([username])
+}
+
+model AuditLog {
+  id            String   @id @default(cuid())
+  user_id       String?
+  username      String?
+  action        String
+  entity_type   String?
+  entity_id     String?
+  details       String?
+  ip            String?
+  created_at    DateTime @default(now())
+
+  user          User?    @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@index([created_at])
+  @@index([user_id])
+}
+
+model Setting {
+  key   String @id
+  value String
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  permissions String[]
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@index([name])
+}
+
+model LoginAttempt {
+  identifier    String   @id
+  failures      Int      @default(0)
+  blocked_until DateTime?
+  last_attempt  DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@index([blocked_until])
+}
+
+model Employee {
+  id          String   @id @default(cuid())
+  name        String
+  position    String?
+  email       String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  constancias Constancia[]
+
+  @@index([name])
+  @@index([created_at])
+}
+
+model Constancia {
+  id          String   @id @default(cuid())
+  employee_id String
+  title       String
+  description String?
+  file_path   String?
+  file_name   String?
+  created_at  DateTime @default(now())
+
+  employee    Employee @relation(fields: [employee_id], references: [id], onDelete: Cascade)
+
+  @@index([employee_id, created_at])
+}
+
+model PapeleriaItem {
+  id         String   @id @default(cuid())
+  name       String   @unique
+  unit       String?
+  quantity   Int      @default(0)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  orderItems PapeleriaOrderItem[]
+
+  @@index([name])
+}
+
+model PapeleriaOrder {
+  id         String   @id @default(cuid())
+  folio      String   @unique
+  user_id    String
+  status     String   @default("OPEN")
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  closed_at  DateTime?
+  closed_by  String?
+
+  user       User     @relation(fields: [user_id], references: [id])
+  items      PapeleriaOrderItem[]
+
+  @@index([user_id, created_at])
+  @@index([status])
+  @@index([created_at])
+}
+
+model PapeleriaOrderItem {
+  id                String   @id @default(cuid())
+  order_id          String
+  papeleria_item_id String
+  quantity          Int
+  note              String?
+
+  order             PapeleriaOrder @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  item              PapeleriaItem  @relation(fields: [papeleria_item_id], references: [id])
+
+  @@index([order_id])
+}

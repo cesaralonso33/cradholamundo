@@ -1,0 +1,8 @@
+node_modules
+dist
+frontend
+uploads
+.git
+.env
+*.log
+scripts
