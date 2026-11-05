@@ -12,6 +12,7 @@
       <section class="bg-white p-4 rounded shadow">
         <h2 class="font-semibold mb-2">URL base</h2>
         <code class="block bg-gray-100 rounded px-3 py-2 text-sm">{{ apiBase }}</code>
+        <p class="mt-2 text-sm">Especificación completa: <a class="text-blue-600 hover:underline" :href="`${apiBase}/api/openapi.yaml`">OpenAPI YAML</a> · <a class="text-blue-600 hover:underline" :href="`${apiBase}/api/openapi.json`">OpenAPI JSON</a></p>
         <p class="text-xs text-gray-500 mt-2">
           Todas las rutas de la API comienzan con <code>/api</code>. El servidor de desarrollo escucha en el puerto 3000.
         </p>

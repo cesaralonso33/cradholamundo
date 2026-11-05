@@ -4,7 +4,7 @@ Sistema de inventario keyboard-first con módulos de usuarios, empleados, papele
 
 ## Stack
 
-- **Backend:** Node.js + TypeScript + Fastify + Prisma + PostgreSQL
+- **Backend:** Node.js + TypeScript + Fastify + Drizzle ORM + PostgreSQL
 - **Frontend:** Vue 3 + Vite + Tailwind CSS + Dexie.js
 - **Auth:** JWT + bcrypt
 
@@ -16,7 +16,7 @@ src/
   index.ts               # Arranque y apagado graceful
   lib/
     auth.ts              # JWT, authenticate y adminOnly
-    prisma.ts            # PrismaClient singleton
+    db/                   # Drizzle schema, PostgreSQL client and repositories
     excel.ts             # Lectura de Excel
     paths.ts             # Rutas de uploads
     settings.ts          # Cache de configuración
@@ -28,8 +28,8 @@ src/
     papeleria.ts
     settings.ts
     backup.ts
-prisma/
-  schema.prisma
+drizzle/
+  migrations/
 frontend/
   src/
     api.ts               # Cliente HTTP centralizado
@@ -58,7 +58,7 @@ Consulta [DEPLOY.md](DEPLOY.md) para la guía completa.
 ```bash
 # Backend
 npm install
-npx prisma db push
+npm run db:migrate
 npm run dev          # http://localhost:3000
 
 # Frontend
@@ -106,7 +106,7 @@ Revisa backend, PostgreSQL, Nginx, proxies, puertos y build del frontend.
 
 ## API
 
-La API REST se configura desde **Configuración → API** (solo admin): habilitar/deshabilitar, generar o revocar clave de API. El manual completo está en [docs/API.md](docs/API.md) y dentro de la app en `/api-docs`.
+La API REST se configura desde **Configuración → API** (solo admin): habilitar/deshabilitar, generar o revocar clave de API. El contrato OpenAPI está en [docs/openapi.yaml](docs/openapi.yaml), se sirve en `/api/openapi.yaml` y `/api/openapi.json`, y está enlazado desde el manual dentro de la app en `/api-docs`.
 
 ## Prueba de rendimiento
 

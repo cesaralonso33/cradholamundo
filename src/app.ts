@@ -22,6 +22,7 @@ import { settingsRoutes } from "./routes/settings.js";
 import { backupRoutes } from "./routes/backup.js";
 import { roleRoutes } from "./routes/roles.js";
 import { auditRoutes } from "./routes/audit.js";
+import { openapi, openapiYaml } from "./openapi.js";
 
 const seedItems = [
   "PERFORADORA DE UN SOLO AGUJERO",
@@ -135,6 +136,8 @@ export async function buildApp() {
 
   app.get("/health", healthHandler);
   app.get("/api/health", healthHandler);
+  app.get("/api/openapi.json", async (_req, reply) => reply.type("application/json; charset=utf-8").send(openapi));
+  app.get("/api/openapi.yaml", async (_req, reply) => reply.type("application/yaml; charset=utf-8").send(openapiYaml));
 
   await app.register(authRoutes);
   await app.register(userRoutes);

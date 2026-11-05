@@ -37,6 +37,16 @@ describe('runtime backed by an isolated migrated PostgreSQL database', () => {
     expect(response.json()).toMatchObject({ ok: true, backend: 'up', database: 'up' });
   });
 
+  it('serves the OpenAPI document in JSON and YAML from the docs-compatible endpoints', async () => {
+    const json = await app!.inject({ method: 'GET', url: '/api/openapi.json' });
+    const yaml = await app!.inject({ method: 'GET', url: '/api/openapi.yaml' });
+    expect(json.statusCode).toBe(200);
+    expect(json.headers['content-type']).toContain('application/json');
+    expect(yaml.statusCode).toBe(200);
+    expect(yaml.headers['content-type']).toContain('application/yaml');
+    expect(JSON.parse(yaml.body)).toEqual(json.json());
+  });
+
   it('seeds the initial admin, roles, and papeleria in the real database', async () => {
     const client = new Client({ connectionString: isolatedUrl }); await client.connect();
     try {

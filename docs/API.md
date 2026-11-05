@@ -2,7 +2,7 @@
 
 La aplicación expone una API REST construida con Fastify. La URL base de desarrollo es `http://localhost:3000`.
 
-También puedes consultar este manual dentro de la app en **Configuración → API → Ver manual de API** (`/api-docs`).
+También puedes consultar este manual dentro de la app en **Configuración → API → Ver manual de API** (`/api-docs`). La especificación OpenAPI 3.1 completa se sirve en `/api/openapi.yaml` (YAML) y `/api/openapi.json` (JSON).
 
 ## Autenticación
 

@@ -79,7 +79,7 @@ if command -v node >/dev/null 2>&1; then
   NODE_MAJOR="$(node -p "process.versions.node.split('.')[0]" 2>/dev/null || echo 0)"
   pass "Node.js instalado: $NODE_VERSION"
   if [ "${NODE_MAJOR:-0}" -lt 22 ]; then
-    warn "Se recomienda Node.js 22 o superior (el proyecto usa Vite 8 y Prisma)."
+    warn "Se recomienda Node.js 22 o superior (el proyecto usa Vite 8 y Drizzle)."
     suggest "nvm install 22 && nvm use 22"
   fi
 else

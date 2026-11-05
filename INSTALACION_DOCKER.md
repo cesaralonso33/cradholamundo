@@ -8,4 +8,4 @@ Solo para desarrollo/prueba local con datos ficticios. Requiere Docker Engine/De
 4. Detener preservando datos: `docker compose down`. Los volúmenes `pgdata` y `uploads` persisten.
 5. Para eliminar los datos locales del entorno de prueba: únicamente tras confirmar el proyecto/volúmenes correctos, `docker compose down -v`.
 
-La línea base de este documento no arrancó Docker ni validó health en contenedores. Antes de producción, eliminar defaults, usar TLS y reemplazar `prisma db push --accept-data-loss` por migraciones versionadas no destructivas; este Compose aún no constituye configuración de producción segura.
+La línea base de este documento no arrancó Docker ni validó health en contenedores. El backend aplica las migraciones Drizzle versionadas al arrancar. Antes de producción, eliminar defaults y usar TLS; este Compose aún no constituye configuración de producción segura.

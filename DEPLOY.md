@@ -83,7 +83,7 @@ También puedes desplegar en un VPS:
 2. Backend: `npm ci --include=dev && npm run build && node dist/index.js`.
 3. Frontend: `cd frontend && npm ci --include=dev && npm run build`.
 
-> Importante: para compilar con TypeScript necesitas las dependencias de desarrollo (`typescript`, `@types/node`, `prisma`). No uses `npm ci --omit=dev` antes de `npm run build`. Si quieres reducir el runtime, ejecuta `npm prune --omit=dev` **después** de compilar.
+> Importante: para compilar con TypeScript necesitas las dependencias de desarrollo (`typescript`, `@types/node`, `drizzle-kit`). No uses `npm ci --omit=dev` antes de `npm run build`. Si quieres reducir el runtime, ejecuta `npm prune --omit=dev` **después** de compilar. Prisma fue retirado del runtime, las herramientas y el script de rendimiento.
 4. Servir `frontend/dist` con Nginx y redirigir `/api` y `/uploads` al backend.
 5. Usar PM2 o systemd para mantener el backend activo.
 
