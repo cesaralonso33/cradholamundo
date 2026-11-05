@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { buildApp } from "./app.js";
-import { prisma } from "./lib/prisma.js";
+import { pool } from "./db/client.js";
+import { loginAttemptRepository } from "./db/repositories/index.js";
 
 const port = Number(process.env.PORT) || 3000;
 const app = await buildApp();
@@ -8,7 +9,7 @@ const app = await buildApp();
 const loginAttemptCleanup = setInterval(async () => {
   try {
     const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    await prisma.loginAttempt.deleteMany({ where: { last_attempt: { lt: cutoff } } });
+    await loginAttemptRepository.deleteBefore(cutoff);
   } catch {
     // Ignore cleanup errors.
   }
@@ -19,8 +20,7 @@ async function shutdown(signal: string) {
   app.log.info(`Received ${signal}, shutting down...`);
   clearInterval(loginAttemptCleanup);
   await app.close();
-  await prisma.$disconnect();
-  process.exit(0);
+  await pool.end();
 }
 
 process.on("SIGINT", () => void shutdown("SIGINT"));
@@ -31,6 +31,6 @@ try {
   app.log.info(`Server listening on port ${port}`);
 } catch (error) {
   app.log.error(error);
-  await prisma.$disconnect();
-  process.exit(1);
+  await pool.end();
+  process.exitCode = 1;
 }

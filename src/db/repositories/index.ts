@@ -1,6 +1,6 @@
-import { and, count, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
+import { and, count, desc, eq, ilike, inArray, lt, or, sql } from 'drizzle-orm';
 import { db } from '../client.js';
-import { auditLogs, constancias, employees, inventoryMovements, locationHistories, papeleriaItems, papeleriaOrderItems, papeleriaOrders, products, roles, settings, users, type NewInventoryMovement, type NewProduct } from '../schema.js';
+import { auditLogs, constancias, employees, inventoryMovements, locationHistories, loginAttempts, papeleriaItems, papeleriaOrderItems, papeleriaOrders, products, roles, settings, users, type NewInventoryMovement, type NewProduct } from '../schema.js';
 import type { Database } from '../client.js';
 
 type Executor = Database | Parameters<Parameters<Database['transaction']>[0]>[0];
@@ -88,6 +88,7 @@ export const papeleriaOrderRepository = {
 };
 export const auditRepository = { list: (executor: Executor = db, filters: { action?: string; username?: string; entityType?: string; page?: number; pageSize?: number } = {}) => { const { page, pageSize } = safePage(filters.page ?? 1, filters.pageSize ?? 50); const clauses = [filters.action ? eq(auditLogs.action, filters.action) : undefined, filters.username ? ilike(auditLogs.username, `%${filters.username}%`) : undefined, filters.entityType ? eq(auditLogs.entity_type, filters.entityType) : undefined].filter(Boolean); const where = clauses.length ? and(...clauses) : undefined; return paged(executor.select().from(auditLogs).where(where).orderBy(desc(auditLogs.created_at)).limit(pageSize).offset((page - 1) * pageSize), executor.select({ count: count() }).from(auditLogs).where(where), page, pageSize); }, create: async (executor: Executor, value: typeof auditLogs.$inferInsert) => (await executor.insert(auditLogs).values(value).returning())[0] };
 export const settingsRepository = { getAll: (executor: Executor = db) => executor.select().from(settings), get: async (executor: Executor, key: string) => (await executor.select().from(settings).where(eq(settings.key, key)).limit(1))[0] ?? null, set: async (executor: Executor, key: string, value: string) => (await executor.insert(settings).values({ key, value }).onConflictDoUpdate({ target: settings.key, set: { value } }).returning())[0] };
+export const loginAttemptRepository = { deleteBefore: async (cutoff: Date, executor: Executor = db) => executor.delete(loginAttempts).where(lt(loginAttempts.last_attempt, cutoff)) };
 export type BackupExportOptions = {
   /** Include password hashes and TOTP secrets for an authorized, restorable administrative backup. */
   includeSensitiveUserData?: boolean;

@@ -7,7 +7,10 @@ import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
 import multipart from "@fastify/multipart";
 import staticFiles from "@fastify/static";
-import { prisma } from "./lib/prisma.js";
+import { db } from "./db/client.js";
+import { papeleriaRepository, roleRepository, userRepository } from "./db/repositories/index.js";
+import { papeleriaItems } from "./db/schema.js";
+import { eq, sql } from "drizzle-orm";
 import { uploadsDir } from "./lib/paths.js";
 import { ALL_PERMISSIONS, DEFAULT_USER_PERMISSIONS } from "./lib/permissions.js";
 import { authRoutes } from "./routes/auth.js";
@@ -37,49 +40,36 @@ const seedItems = [
 ];
 
 async function seedAdmin() {
-  const count = await prisma.user.count();
-  if (count > 0) return;
+  const count = await userRepository.countByRole(db, "admin");
+  const existing = await userRepository.findByUsername(db, "admin");
+  if (count > 0 || existing) return;
   const password = process.env.ADMIN_PASSWORD;
   if (!password && process.env.NODE_ENV === "production") {
     throw new Error("ADMIN_PASSWORD is required to create the initial admin user in production.");
   }
-  await prisma.user.create({
-    data: {
+  await userRepository.create(db, {
       username: "admin",
       password: await bcrypt.hash(password || "admin123", 10),
       role: "admin",
-    },
   });
 }
 
 async function seedRoles() {
-  await prisma.role.upsert({
-    where: { name: "admin" },
-    update: { permissions: [...ALL_PERMISSIONS] },
-    create: {
-      name: "admin",
-      description: "Administrador con acceso total",
-      permissions: [...ALL_PERMISSIONS],
-    },
-  });
-  await prisma.role.upsert({
-    where: { name: "user" },
-    update: {},
-    create: {
-      name: "user",
-      description: "Usuario operativo",
-      permissions: [...DEFAULT_USER_PERMISSIONS],
-    },
-  });
+  for (const [name, description, permissions] of [
+    ["admin", "Administrador con acceso total", [...ALL_PERMISSIONS]],
+    ["user", "Usuario operativo", [...DEFAULT_USER_PERMISSIONS]],
+  ] as const) {
+    const role = await roleRepository.findByName(db, name);
+    if (role) await roleRepository.update(db, role.id, { permissions: [...permissions] });
+    else await roleRepository.create(db, { name, description, permissions: [...permissions] });
+  }
 }
 
 async function seedPapeleria() {
-  const count = await prisma.papeleriaItem.count();
-  if (count > 0) return;
-  await prisma.papeleriaItem.createMany({
-    data: seedItems.map((name) => ({ name, unit: "PIEZA", quantity: 0 })),
-    skipDuplicates: true,
-  });
+  for (const name of seedItems) {
+    const existing = await db.select({ id: papeleriaItems.id }).from(papeleriaItems).where(eq(papeleriaItems.name, name)).limit(1);
+    if (!existing.length) await papeleriaRepository.createItem(db, { name, unit: "PIEZA", quantity: 0 });
+  }
 }
 
 export async function buildApp() {
@@ -128,7 +118,7 @@ export async function buildApp() {
   const healthHandler = async (_req: any, reply: any) => {
     const timestamp = new Date().toISOString();
     try {
-      await prisma.$queryRaw`SELECT 1`;
+      await db.execute(sql`SELECT 1`);
       return { ok: true, backend: "up", database: "up", timestamp };
     } catch (error: any) {
       app.log.error(error);
