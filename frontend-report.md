@@ -1,7 +1,9 @@
-# Frontend: corrección de alta de empleados
+# Frontend: formularios de empleados y movimientos de inventario
 
 El formulario de `Employees.vue` envía `name`, `position` y `email`. Se explicitó ese contrato en `apiCreateEmployee` usando el modelo `Employee`, y la prueba de `employeeSchema` ahora valida directamente el payload real del formulario. La validación requiere nombre y acepta posición/email opcionales; no exige `employee_number`, ausente tanto del formulario como del modelo backend.
 
 La inspección de HEAD encontró que el esquema ya no contenía `employee_number`; la prueba anterior era insuficiente (combinaba nombre vacío con `employee_number` vacío, y podía pasar aunque el esquema no lo conociera). Por eso se reemplazó por el caso válido de formulario y se añadió una comprobación explícita del nombre requerido. No fue posible observar RED contra el esquema anterior porque esa versión no está en el checkout; el nuevo caso pasa en el estado existente. Backend y proyecto original no se modificaron.
 
-Verificación: `npm test` y `npm run build` (resultados registrados al cerrar este cambio).
+Se incorporó en `Inventory.vue` un formulario compacto para movimientos IN/OUT, selección de producto por SKU, cantidad entera positiva y nota opcional. Usa `apiMovement` y `inventoryMovementSchema`; es accesible mediante etiquetas/controles nativos, se adapta a móvil y comunica carga, éxito, error, desconexión y conflicto 409. Los movimientos no se ponen en cola cuando no hay red. Pruebas nuevas de schema y envío: RED inicial observado al no existir componente/esquema, GREEN tras implementación.
+
+Verificación: `frontend/npm test` (17/17) y `frontend/npm run build` pasan. Detector Impeccable `detect --json` sobre ambos archivos UI: `[]`. Playwright no pudo iniciar backend porque no está configurado `DATABASE_URL`; se añadió el flujo transaccional que crea producto, registra movimiento desde UI y comprueba stock al estar disponible el entorno PostgreSQL E2E aislado.

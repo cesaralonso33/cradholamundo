@@ -19,3 +19,9 @@ export const settingsSchema = z.object({
   quantity: z.coerce.number().int().positive("La cantidad debe ser un entero mayor que cero"),
   category: z.string().max(100, "La categoría no puede exceder 100 caracteres"),
 });
+export const inventoryMovementSchema = z.object({
+  sku: z.string().trim().min(1, "Selecciona un producto"),
+  type: z.enum(["IN", "OUT"], { error: "Selecciona un tipo de movimiento" }),
+  quantity: z.coerce.number().int().positive("La cantidad debe ser un entero mayor que cero"),
+  note: z.string().trim().optional(),
+});

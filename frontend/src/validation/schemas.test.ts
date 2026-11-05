@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { employeeSchema, loginSchema, papeleriaSchema, productCaptureSchema, settingsSchema } from "./schemas";
+import { employeeSchema, inventoryMovementSchema, loginSchema, papeleriaSchema, productCaptureSchema, settingsSchema } from "./schemas";
 
 describe("frontend form schemas", () => {
   it("requires a login password", () => expect(loginSchema.safeParse({ password: "" }).success).toBe(false));
@@ -14,4 +14,8 @@ describe("frontend form schemas", () => {
     expect(papeleriaSchema.safeParse({ name: "Papel", quantity: -1 }).success).toBe(false);
   });
   it("rejects a zero default inventory quantity in settings", () => expect(settingsSchema.safeParse({ quantity: 0, category: "" }).success).toBe(false));
+  it("accepts only selected SKU, IN/OUT movement, and a positive integer quantity", () => {
+    expect(inventoryMovementSchema.safeParse({ sku: "SKU-1", type: "IN", quantity: 1 }).success).toBe(true);
+    expect(inventoryMovementSchema.safeParse({ sku: "SKU-1", type: "OUT", quantity: 1.25 }).success).toBe(false);
+  });
 });

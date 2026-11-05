@@ -11,6 +11,18 @@ test("main screens require a real admin session and remain navigable", async ({ 
   await page.getByRole("button", { name: "Entrar" }).click();
   await expect(page).toHaveURL(/\/$/);
 
+  const sku = `E2E-MOV-${Date.now()}`;
+  const created = await page.request.post("/api/products", { data: { sku, name: "E2E movement product", quantity: 1 } });
+  expect(created.ok()).toBeTruthy();
+  await page.reload();
+  await page.getByLabel("Producto").selectOption(sku);
+  await page.getByLabel("Tipo de movimiento").selectOption("IN");
+  await page.getByLabel("Cantidad", { exact: true }).fill("2");
+  await page.getByRole("button", { name: "Registrar movimiento" }).click();
+  await expect(page.getByRole("status")).toContainText("Movimiento registrado");
+  const moved = await page.request.get(`/api/products/${encodeURIComponent(sku)}`);
+  expect((await moved.json()).quantity).toBe(3);
+
   // These routes exercise inventory/movement, stationery/order, employee/certificate,
   // and settings/backup pages against the running API and isolated PostgreSQL.
   for (const path of ["/", "/papeleria", "/employees", "/settings"]) {

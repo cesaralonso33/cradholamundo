@@ -16,10 +16,13 @@
 - [x] Task 4 (inventario): productos, historial, archivo y movimientos migrados a Drizzle con Zod, errores centralizados y pruebas HTTP de integración contra PostgreSQL aislado; validada la concurrencia de salidas sin permitir stock negativo.
 - [x] Task 6 (parcial): configuración Playwright y checks de seguridad; E2E smoke contra PostgreSQL aislado. Flujos UI transaccionales, 2FA y parte de seguridad requieren completar/reejecutar; detalle en informe `e2e-security-report.md`.
 - [ ] Verificación Docker y documentación final.
+- [x] Brecha E2E de movimientos: formulario Operate accesible/responsive, validación Zod, envío a `POST /api/inventory/movement` y estados de red/conflicto; ver `frontend-report.md` y `e2e-security-report.md`.
 
 ## Registro de decisiones
 
 2026-11-05 — Se seleccionó migración incremental sobre copia independiente para conservar la semántica existente y evitar tocar el proyecto original.
+
+2026-11-05 — Brecha E2E de movimientos cubierta en UI: se añadió formulario con pruebas RED→GREEN, selección del producto/SKU, IN/OUT, cantidad positiva entera y nota opcional. Frontend tests 17/17 y build pasan; detector Impeccable sin hallazgos. Playwright transaccional está integrado, pero su ejecución queda bloqueada por ausencia de `DATABASE_URL` (y credenciales E2E); detalle y desbloqueo en `e2e-security-report.md`.
 
 2026-11-05 — Task 2: `prisma/schema.prisma` prevalece sobre migraciones históricas. Se mapearon sus 13 modelos (aunque el brief menciona 12) conservando los nombres SQL por defecto de Prisma (`Product`, `User`, etc.), los nombres originales de columnas y `DateTime` como `timestamp(3)` sin zona horaria. IDs CUID y `updated_at` se generan/actualizan desde Drizzle en la aplicación; `created_at` y defaults funcionales permanecen SQL cuando así lo define Prisma. La migración inicial solo crea tablas, índices y FKs; no elimina objetos.
 
