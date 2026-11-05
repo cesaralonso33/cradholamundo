@@ -28,9 +28,7 @@
           <button @click="logout" class="app-shell__logout">Salir ({{ auth.user.value?.username }})</button>
         </nav>
       </aside>
-      <button class="app-shell__menu-toggle" aria-label="Abrir menú" @click="menuOpen = !menuOpen">
-        <span aria-hidden="true">☰</span>
-      </button>
+      <Button class="app-shell__menu-toggle" aria-label="Abrir menú" icon="pi pi-bars" text @click="menuOpen = !menuOpen" />
       <div v-if="menuOpen" class="app-shell__scrim" aria-hidden="true" @click="menuOpen = false"></div>
     </template>
     <main :class="{ 'app-shell__content': auth.isAuthenticated.value && route.path !== '/login' }">
@@ -44,6 +42,7 @@ import { ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAuth } from "./auth";
 import SyncStatusBadge from "./components/SyncStatusBadge.vue";
+import Button from "primevue/button";
 
 const auth = useAuth();
 const route = useRoute();
