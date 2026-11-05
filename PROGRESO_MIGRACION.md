@@ -9,7 +9,7 @@
 - [x] Rama local `modernizacion` inicializada.
 - [x] `ANALISIS_INICIAL.md` creado.
 - [x] Diseño técnico creado y pendiente de aprobación para iniciar implementación.
-- [ ] Línea base de compilación y pruebas.
+- [x] Línea base ejecutada y documentada en `REPORTE_PRUEBAS.md` (backend build pasa; backend test requiere `DATABASE_URL`; frontend build y tests pasan).
 - [ ] Migración de esquema a Drizzle.
 - [ ] Migración de rutas y servicios.
 - [ ] Pruebas de integración, seguridad y E2E.
