@@ -1,9 +1,6 @@
 <template>
   <div class="min-h-screen p-4 sm:p-6">
-    <header class="flex flex-wrap items-center justify-between gap-2 mb-4">
-      <h1 class="text-xl font-bold">Configuración</h1>
-      <router-link to="/" class="text-blue-600 text-sm">← Inventario</router-link>
-    </header>
+    <PageHeader title="Configuración" description="Personaliza tu espacio de trabajo y protege tu cuenta." eyebrow="Administración" />
     <section class="bg-white p-4 rounded shadow max-w-md space-y-4">
       <div>
         <h2 class="font-semibold mb-2">Cantidad por defecto por captura</h2>
@@ -192,6 +189,7 @@ import {
   verify2faRequest,
 } from "../api";
 import { useAuth } from "../auth";
+import PageHeader from "../components/ui/PageHeader.vue";
 
 const auth = useAuth();
 const isAdmin = auth.isAdmin;

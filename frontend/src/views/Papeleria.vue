@@ -1,9 +1,6 @@
 <template>
   <div class="min-h-screen p-4 sm:p-6">
-    <header class="flex flex-wrap items-center justify-between gap-2 mb-4">
-      <h1 class="text-xl font-bold">Papelería</h1>
-      <router-link to="/" class="text-blue-600 text-xs sm:text-sm hover:underline">← Inventario</router-link>
-    </header>
+    <PageHeader title="Papelería" description="Gestiona catálogo, solicitudes y cierres de pedidos." eyebrow="Operación" />
     <p v-if="loadError" role="alert" class="text-sm text-red-700 mb-3">{{ loadError }}</p>
     <p v-else-if="loading" role="status" class="text-sm text-gray-600 mb-3">Cargando papelería...</p>
 
@@ -223,6 +220,7 @@
 <script setup lang="ts">
 import { ref, shallowRef, onMounted } from "vue";
 import { useAuth } from "../auth";
+import PageHeader from "../components/ui/PageHeader.vue";
 import {
   apiListPapeleria,
   apiCreatePapeleria,

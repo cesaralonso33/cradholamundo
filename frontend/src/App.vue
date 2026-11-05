@@ -5,31 +5,33 @@
         <div class="app-shell__brand">
           <span class="app-shell__eyebrow">Operaciones</span>
           <h1>Inventario Rápido</h1>
+          <p class="app-shell__workspace">Workspace operativo</p>
         </div>
         <nav aria-label="Navegación principal" class="app-shell__nav">
           <div class="app-shell__group">
             <p class="app-shell__group-title">Operación</p>
-            <router-link v-if="auth.hasPermission('history')" to="/history">Historial</router-link>
-            <router-link v-if="auth.hasPermission('papeleria')" to="/papeleria">Papelería</router-link>
+            <router-link v-if="auth.hasPermission('history')" to="/history"><History :size="17" />Historial</router-link>
+            <router-link v-if="auth.hasPermission('papeleria')" to="/papeleria"><ClipboardList :size="17" />Papelería</router-link>
           </div>
           <div v-if="auth.isAdmin.value || auth.hasPermission('users') || auth.hasPermission('settings')" class="app-shell__group">
             <p class="app-shell__group-title">Administración</p>
-            <router-link v-if="auth.hasPermission('users')" to="/users">Usuarios</router-link>
-            <router-link v-if="auth.hasPermission('settings')" to="/settings">Configuración</router-link>
-            <router-link v-if="auth.isAdmin.value" to="/employees">Empleados</router-link>
-            <router-link v-if="auth.isAdmin.value" to="/roles">Roles</router-link>
-            <router-link v-if="auth.isAdmin.value" to="/audit">Auditoría</router-link>
+            <router-link v-if="auth.hasPermission('users')" to="/users"><Users :size="17" />Usuarios</router-link>
+            <router-link v-if="auth.hasPermission('settings')" to="/settings"><Settings :size="17" />Configuración</router-link>
+            <router-link v-if="auth.isAdmin.value" to="/employees"><Users :size="17" />Empleados</router-link>
+            <router-link v-if="auth.isAdmin.value" to="/roles"><ShieldCheck :size="17" />Roles</router-link>
+            <router-link v-if="auth.isAdmin.value" to="/audit"><FileText :size="17" />Auditoría</router-link>
           </div>
           <div v-if="auth.hasPermission('api')" class="app-shell__group">
             <p class="app-shell__group-title">Recursos</p>
-            <router-link to="/api-docs">API</router-link>
+            <router-link to="/api-docs"><FileText :size="17" />API</router-link>
           </div>
           <SyncStatusBadge />
-          <Button variant="ghost" size="sm" class="app-shell__logout" @click="logout">Salir ({{ auth.user.value?.username }})</Button>
+          <Button variant="ghost" size="sm" class="app-shell__logout" @click="logout"><LogOut :size="16" />Salir ({{ auth.user.value?.username }})</Button>
         </nav>
       </aside>
       <Button variant="outline" size="icon" class="app-shell__menu-toggle" aria-label="Abrir menú" @click="menuOpen = !menuOpen">
-        <span aria-hidden="true">☰</span>
+        <X v-if="menuOpen" :size="20" aria-hidden="true" />
+        <Menu v-else :size="20" aria-hidden="true" />
       </Button>
       <div v-if="menuOpen" class="app-shell__scrim" aria-hidden="true" @click="menuOpen = false"></div>
     </template>
@@ -45,6 +47,7 @@ import { useRoute, useRouter } from "vue-router";
 import { useAuth } from "./auth";
 import SyncStatusBadge from "./components/SyncStatusBadge.vue";
 import Button from "./components/ui/Button.vue";
+import { ClipboardList, FileText, History, LogOut, Menu, Settings, ShieldCheck, Users, X } from "@lucide/vue";
 
 const auth = useAuth();
 const route = useRoute();

@@ -1,6 +1,9 @@
 <template>
   <div class="min-h-screen p-4 sm:p-6">
     <div class="mx-auto max-w-7xl">
+    <PageHeader title="Inventario" description="Captura existencias y controla movimientos en un solo lugar." eyebrow="Operación">
+      <template #actions><Badge variant="success">Sincronización activa</Badge></template>
+    </PageHeader>
     <section class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
       <QuickInventoryForm @captured="onCapture" />
     </section>
@@ -35,6 +38,8 @@ import QuickInventoryForm from "../components/QuickInventoryForm.vue";
 import RecentCapturesTable from "../components/RecentCapturesTable.vue";
 import PaginationBar from "../components/PaginationBar.vue";
 import InventoryMovementPanel from "../components/InventoryMovementPanel.vue";
+import PageHeader from "../components/ui/PageHeader.vue";
+import Badge from "../components/ui/Badge.vue";
 
 const auth = useAuth();
 const rows = shallowRef<any[]>([]);

@@ -1,9 +1,6 @@
 <template>
   <div class="min-h-screen p-4 sm:p-6">
-    <header class="flex flex-wrap items-center justify-between gap-2 mb-4">
-      <h1 class="text-xl font-bold">Empleados y constancias</h1>
-      <router-link to="/" class="text-blue-600 text-xs sm:text-sm hover:underline">← Inventario</router-link>
-    </header>
+    <PageHeader title="Empleados y constancias" description="Administra personas y conserva sus documentos importantes." eyebrow="Administración" />
 
     <section class="border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
       <div class="flex items-center justify-between mb-2">
@@ -128,6 +125,7 @@
 <script setup lang="ts">
 import { ref, shallowRef, onMounted } from "vue";
 import { useAuth } from "../auth";
+import PageHeader from "../components/ui/PageHeader.vue";
 import {
   apiListEmployees,
   apiCreateEmployee,
