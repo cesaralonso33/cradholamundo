@@ -1,22 +1,32 @@
+import { execFileSync } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 import { Client } from 'pg';
 import Fastify from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-const connectionString = process.env.DATABASE_URL;
+const baseUrl = process.env.DATABASE_URL;
+let connectionString = '';
+let databaseName = '';
 let client: Client;
 let app: ReturnType<typeof Fastify>;
 let token: string;
 let userToken: string;
 
 beforeAll(async () => {
-  if (!connectionString) throw new Error('DATABASE_URL must target the isolated PostgreSQL test database');
+  if (!baseUrl) throw new Error('DATABASE_URL must point to a PostgreSQL admin database for disposable test databases.');
+  databaseName = `products_${process.pid}_${randomBytes(4).toString('hex')}`;
+  const admin = new Client({ connectionString: baseUrl }); await admin.connect();
+  try { await admin.query(`CREATE DATABASE "${databaseName}"`); } finally { await admin.end(); }
+  const isolated = new URL(baseUrl); isolated.pathname = `/${databaseName}`; isolated.searchParams.delete('schema');
+  connectionString = isolated.toString();
+  execFileSync(process.execPath, ['node_modules/drizzle-kit/bin.cjs', 'migrate'], { cwd: process.cwd(), env: { ...process.env, DATABASE_URL: connectionString }, stdio: 'pipe' });
+  process.env.DATABASE_URL = connectionString;
   process.env.JWT_SECRET = 'task4-inventory-test-secret-at-least-32';
-  const [{ productRoutes }, auth, dbModule] = await Promise.all([import('../../src/routes/products.js'), import('../../src/lib/auth.js'), import('../../src/db/client.js')]);
+  const [{ productRoutes }, auth] = await Promise.all([import('../../src/routes/products.js'), import('../../src/lib/auth.js')]);
   client = new Client({ connectionString }); await client.connect();
   app = Fastify(); await app.register(productRoutes); await app.ready();
   token = auth.signToken({ id: 'admin1', username: 'admin', role: 'admin' });
   userToken = auth.signToken({ id: 'user1', username: 'worker', role: 'worker' });
-  void dbModule;
   await client.query(`INSERT INTO "Role" (id,name,description,permissions,updated_at) VALUES ('role-worker','worker','Worker',ARRAY['products'],now()) ON CONFLICT (name) DO UPDATE SET permissions=EXCLUDED.permissions`);
   await client.query(`INSERT INTO "User" (id,username,password,role,updated_at) VALUES ('admin1','admin','x','admin',now()),('user1','worker','x','worker',now()) ON CONFLICT (id) DO NOTHING`);
 }, 60000);
@@ -26,7 +36,13 @@ beforeEach(async () => {
   await client.query('TRUNCATE TABLE "InventoryMovement", "LocationHistory", "Product", "AuditLog", "Setting" CASCADE');
 });
 
-afterAll(async () => { await app?.close(); await client?.end(); const { pool } = await import('../../src/db/client.js'); await pool.end(); });
+afterAll(async () => {
+  await app?.close(); await client?.end();
+  const { pool } = await import('../../src/db/client.js'); await pool.end();
+  if (!baseUrl || !databaseName) return;
+  const admin = new Client({ connectionString: baseUrl }); await admin.connect();
+  try { await admin.query('SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname=$1 AND pid<>pg_backend_pid()', [databaseName]); await admin.query(`DROP DATABASE IF EXISTS "${databaseName}"`); } finally { await admin.end(); }
+});
 
 const request = (method: string, url: string, payload?: unknown, auth = token) => app.inject({ method, url, headers: { authorization: `Bearer ${auth}` }, payload: payload as object | undefined });
 
