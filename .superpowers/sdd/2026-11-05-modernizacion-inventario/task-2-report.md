@@ -31,6 +31,13 @@ La fuente autoritativa fue `prisma/schema.prisma`; las migraciones históricas n
 - **RED:** la prueba inicial de configuración falló porque `db:check` utilizó el fallback; con el guard, `db:migrate` y `db:check` sin variable fallan mostrando `DATABASE_URL is required`. La suite de DB sin variable también falla de forma explícita (no pasa ni omite silenciosamente el requisito).
 - **GREEN:** en PostgreSQL local aislado, `npm run test:db` pasó (3 archivos/9 pruebas), `npm test` pasó (4 archivos/10 pruebas), `npm run build` y `npm run db:check` pasaron. Las bases `drizzle_test_*` se eliminan al finalizar.
 
+## Fix report — re-revisión de aislamiento dotenv
+
+- **RED reproducido:** con `DATABASE_URL` eliminado y `DOTENV_CONFIG_PATH` apuntando a un archivo temporal que definía una URL ficticia, la prueba anterior aceptó `db:check` (salida 0) y `db:migrate` cargó la URL del archivo en vez de reportar la variable ausente.
+- **Cambio mínimo:** `tests/db/config.test.ts` ahora ejecuta cada comando en un `cwd` temporal sin `.env`, elimina `DATABASE_URL` y `DOTENV_CONFIG_PATH` del entorno hijo y pasa la ruta absoluta de `drizzle.config.ts`. La comprobación del archivo `.env` temporal asegura la condición de aislamiento.
+- **GREEN:** la prueba de configuración pasó (2/2) aun con el `DOTENV_CONFIG_PATH` hostil presente en el proceso padre. Con PostgreSQL aislado en `127.0.0.1:55433`, se aplicó `npm run db:migrate` desde cero; luego `npm run test:db` pasó (9/9), `npm test` (10/10), `npm run build` y `npm run db:check` pasaron.
+- El cluster temporal `pg-task2-rereview` se detuvo y eliminó después de la verificación. No se modificaron rutas ni el proyecto original.
+
 ## Alcance pendiente
 
 La base temporal inicial estuvo en `C:\Users\crad\AppData\Local\Temp\opencode\pg-task2`; después de verificar se detuvo el servidor y se eliminó el cluster temporal. Las DB desechables creadas por la suite también se eliminan en su limpieza. Continuar rutas en la siguiente tarea.
