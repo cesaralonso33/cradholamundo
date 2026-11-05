@@ -20,3 +20,12 @@ Entorno desechable PostgreSQL 14 inicializado desde cero con `initdb` en `%LOCAL
 ## Resultado y alcance
 
 Task 6 está **parcial**: el movimiento desde UI y stock persistido sí se comprobaron realmente, pero la batería solicitada no está completa. Para cerrar pendientes, añadir fixtures UI para usuario limitado/empleado y pedido, aislar security en DB nueva (y limpiar `LoginAttempt` solo en esa DB entre casos), y diseñar aserciones de backup sensible/seguro, rollback y concurrencia sin datos compartidos.
+
+## Reejecución de auth (2026-11-05)
+
+- `playwright.config.ts` pasa `ADMIN_PASSWORD: process.env.ADMIN_PASSWORD ?? process.env.E2E_ADMIN_PASSWORD` al backend de Playwright. Para las pruebas auth basta definir `E2E_ADMIN_PASSWORD`; no se versiona ningún valor secreto. `.env.example` deja `ADMIN_PASSWORD` vacío.
+- Se agregó diagnóstico no tolerante al fallo para creación de roles (status y body), y la reproducción confirmó que `POST /api/roles` responde 401 `{"error":"missing token"}`. Las pruebas de auth aún no están aprobadas.
+- Cluster PostgreSQL 14 nuevo en `%LOCALAPPDATA%\Temp\opencode\task6-auth-final`, puerto 55839, DB `task6auth`; `npm run db:migrate` pasó. Sin Docker.
+- E2E dirigida (2FA real y cuenta limitada): 0/2. El primer rerun reprodujo extractor TOTP incorrecto (selector `code` genérico leía texto de la página con `:`); se acotó al `<code>` junto a «Clave manual». El segundo rerun no encontró el campo de verificación y el rol siguió dando 401 missing token aun usando fetch del navegador. Sin atribuir causa backend ni modificarlo.
+- Verificaciones en DB aislada: build backend pasó; `npm test` pasó (62, 6 omitidas); `npm run test:db` pasó (12); frontend build pasó. `npm run test:security` se ejecutó sin `E2E_API_URL`, por lo que sus 6 pruebas live se omitieron: no acredita seguridad live.
+- Rerun live de seguridad contra backend aislado en puerto 3342: 5/6 pasan, falla CORS porque la respuesta refleja `https://untrusted.invalid` en `Access-Control-Allow-Origin`; no se alteró backend ni se declara suite aprobada.

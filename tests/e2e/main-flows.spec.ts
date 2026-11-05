@@ -57,7 +57,7 @@ test("real browser setup, 2FA login cookie, and disable flow", async ({ page }) 
   await expect(page).toHaveURL(/\/$/);
   await page.goto("/settings");
   await page.getByRole("button", { name: "Activar 2FA" }).click();
-  const secret = (await page.locator("code").textContent())!.trim();
+  const secret = (await page.locator("p").filter({ hasText: "Clave manual:" }).locator("code").textContent())!.trim();
   await page.getByLabel("Código de verificación").fill(generateSync({ secret }));
   await page.getByRole("button", { name: "Verificar y activar" }).click();
   await expect(page.getByText("2FA activado correctamente.")).toBeVisible();
@@ -91,11 +91,17 @@ test("limited account hides and redirects restricted pages and API denies access
   await page.locator('input[type="password"]').fill(password!);
   await page.getByRole("button", { name: "Entrar" }).click();
   const roleName = `e2e-limited-${Date.now()}`;
-  const role = await page.request.post("/api/roles", { data: { name: roleName, description: "Isolated E2E limited role", permissions: ["products"] } });
-  expect(role.ok()).toBeTruthy();
-  const created = await page.request.post("/api/auth/register", { data: { username: roleName, password: "E2eLimitedPass123!", role: roleName } });
-  expect(created.ok()).toBeTruthy();
-  await page.request.post("/api/auth/logout");
+  const createRole = await page.evaluate(async (name) => {
+    const response = await fetch("/api/roles", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, description: "Isolated E2E limited role", permissions: ["products"] }) });
+    return { status: response.status, body: await response.text() };
+  }, roleName);
+  expect(createRole.status >= 200 && createRole.status < 300, `POST /api/roles failed: status=${createRole.status} body=${createRole.body}`).toBeTruthy();
+  const register = await page.evaluate(async (name) => {
+    const response = await fetch("/api/auth/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: name, password: "E2eLimitedPass123!", role: name }) });
+    return { status: response.status, body: await response.text() };
+  }, roleName);
+  expect(register.status >= 200 && register.status < 300, `POST /api/auth/register failed: status=${register.status} body=${register.body}`).toBeTruthy();
+  await page.evaluate(() => fetch("/api/auth/logout", { method: "POST" }));
   await page.goto("/login");
   await page.locator('input[type="password"]').fill("E2eLimitedPass123!");
   await page.getByRole("button", { name: "Entrar" }).click();
@@ -104,5 +110,6 @@ test("limited account hides and redirects restricted pages and API denies access
   await expect(page).toHaveURL(/\/$/);
   await page.goto("/settings");
   await expect(page).toHaveURL(/\/$/);
-  expect((await page.request.get("/api/users")).status()).toBe(403);
+  const usersStatus = await page.evaluate(async () => (await fetch("/api/users")).status);
+  expect(usersStatus).toBe(403);
 });
