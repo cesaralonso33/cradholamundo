@@ -43,7 +43,8 @@ describe("global navigation", () => {
   it("shows the shared menu, current user, and sign-out on authenticated pages", async () => {
     const wrapper = await renderAt("/", { username: "ana", role: "user", permissions: ["users"] });
     expect(wrapper.find("nav").exists()).toBe(true);
-    expect(wrapper.find("header.app-shell__header").exists()).toBe(true);
+    expect(wrapper.find("aside.app-shell__sidebar").exists()).toBe(true);
+    expect(wrapper.find("button[aria-label='Abrir menú']").exists()).toBe(true);
     expect(wrapper.find("nav.app-shell__nav").classes()).toContain("app-shell__nav");
     expect(wrapper.text()).toContain("Salir (ana)");
     expect(wrapper.text()).toContain("Inventory content");
@@ -53,6 +54,7 @@ describe("global navigation", () => {
   it("does not show the shared menu on the login route", async () => {
     const wrapper = await renderAt("/login", null);
     expect(wrapper.find("nav").exists()).toBe(false);
+    expect(wrapper.find("aside.app-shell__sidebar").exists()).toBe(false);
     expect(wrapper.text()).toContain("Login form");
     wrapper.unmount();
   });
@@ -71,5 +73,13 @@ describe("global navigation", () => {
     expect(admin.find('a[href="/audit"]').exists()).toBe(true);
     expect(admin.find('a[href="/api-docs"]').exists()).toBe(true);
     admin.unmount();
+  });
+
+  it("opens the sidebar from the mobile menu button", async () => {
+    const wrapper = await renderAt("/", { username: "ana", role: "user", permissions: ["users"] });
+    expect(wrapper.find("aside.app-shell__sidebar").classes()).not.toContain("is-open");
+    await wrapper.get("button[aria-label='Abrir menú']").trigger("click");
+    expect(wrapper.find("aside.app-shell__sidebar").classes()).toContain("is-open");
+    wrapper.unmount();
   });
 });

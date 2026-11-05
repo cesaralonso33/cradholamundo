@@ -28,18 +28,29 @@ button, a, input, select, textarea {
   outline-offset: 2px;
 }
 
-.app-shell__header {
+.app-shell__sidebar {
   position: sticky;
   top: 0;
   z-index: 20;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.85rem clamp(1rem, 3vw, 2rem);
+  flex-direction: column;
+  width: 16rem;
+  min-height: 100vh;
+  padding: 1.25rem 1rem;
   background: rgba(255, 255, 255, 0.96);
-  border-bottom: 1px solid var(--line);
-  box-shadow: 0 8px 24px rgba(23, 32, 51, 0.06);
+  border-right: 1px solid var(--line);
+  box-shadow: 8px 0 24px rgba(23, 32, 51, 0.05);
+  position: fixed;
+  left: 0;
+}
+.app-shell__content { margin-left: 16rem; min-height: 100vh; }
+.app-shell__sidebar .app-shell__brand { margin-bottom: 2rem; }
+.app-shell__sidebar .app-shell__nav { align-items: stretch; flex-direction: column; justify-content: flex-start; width: 100%; }
+.app-shell__sidebar .app-shell__nav a { border-radius: 0.6rem; padding: 0.65rem 0.75rem; }
+.app-shell__sidebar .app-shell__nav a:hover, .app-shell__sidebar .app-shell__nav a.router-link-active { background: #eff6ff; }
+.app-shell__sidebar .app-shell__logout { border-left: 0; border-top: 1px solid var(--line); margin: auto 0 0; padding: 0.9rem 0 0; text-align: left; width: 100%; }
+.app-shell__menu-toggle, .app-shell__scrim { display: none; }
+.app-shell__header { display: none;
 }
 
 .app-shell__brand { min-width: max-content; }
@@ -79,7 +90,9 @@ table tbody tr:hover { background-color: #f8fafc; }
 [role="status"] { border-radius: 0.6rem; background: #eff6ff; padding: 0.7rem 0.85rem; color: #1e40af; }
 
 @media (max-width: 720px) {
-  .app-shell__header { align-items: flex-start; flex-direction: column; padding: 0.8rem 1rem; }
-  .app-shell__nav { justify-content: flex-start; width: 100%; }
-  .app-shell__logout { border-left: 0; margin-left: 0; padding-left: 0; }
+  .app-shell__sidebar { transform: translateX(-105%); transition: transform 180ms ease; width: min(17rem, 86vw); }
+  .app-shell__sidebar.is-open { transform: translateX(0); }
+  .app-shell__content { margin-left: 0; }
+  .app-shell__menu-toggle { position: fixed; top: 0.85rem; left: 0.85rem; z-index: 30; display: inline-flex; align-items: center; justify-content: center; width: 2.75rem; height: 2.75rem; border: 1px solid var(--line); border-radius: 0.7rem; background: white; color: var(--ink); box-shadow: 0 5px 16px rgba(23, 32, 51, 0.12); cursor: pointer; }
+  .app-shell__scrim { position: fixed; inset: 0; z-index: 19; display: block; background: rgba(15, 23, 42, 0.35); }
 }
