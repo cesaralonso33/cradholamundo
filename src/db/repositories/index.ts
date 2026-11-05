@@ -60,8 +60,28 @@ export const roleRepository = {
   countUsers: async (executor: Executor, role: string) => (await executor.select({ count: count() }).from(users).where(eq(users.role, role)))[0]?.count ?? 0,
   countsByRole: async (executor: Executor) => executor.select({ role: users.role, count: count() }).from(users).groupBy(users.role),
 };
-export const employeeRepository = { list: (executor: Executor = db) => executor.select().from(employees).orderBy(desc(employees.created_at)), findById: async (executor: Executor, id: string) => (await executor.select().from(employees).where(eq(employees.id, id)).limit(1))[0] ?? null, constancias: (executor: Executor, employeeId: string) => executor.select().from(constancias).where(eq(constancias.employee_id, employeeId)).orderBy(desc(constancias.created_at)) };
-export const papeleriaRepository = { listItems: (executor: Executor = db) => executor.select().from(papeleriaItems).orderBy(desc(papeleriaItems.created_at)), listOrders: (executor: Executor = db, userId?: string, limit = 100) => executor.select().from(papeleriaOrders).where(userId ? eq(papeleriaOrders.user_id, userId) : undefined).orderBy(desc(papeleriaOrders.created_at)).limit(Math.min(200, Math.max(1, limit))), orderItems: (executor: Executor, orderId: string) => executor.select().from(papeleriaOrderItems).where(eq(papeleriaOrderItems.order_id, orderId)) };
+export const employeeRepository = {
+  list: (executor: Executor = db) => executor.select().from(employees).orderBy(desc(employees.created_at)),
+  findById: async (executor: Executor, id: string) => (await executor.select().from(employees).where(eq(employees.id, id)).limit(1))[0] ?? null,
+  create: async (executor: Executor, value: typeof employees.$inferInsert) => (await executor.insert(employees).values(value).returning())[0],
+  delete: async (executor: Executor, id: string) => (await executor.delete(employees).where(eq(employees.id, id)).returning())[0] ?? null,
+  constancias: (executor: Executor, employeeId: string) => executor.select().from(constancias).where(eq(constancias.employee_id, employeeId)).orderBy(desc(constancias.created_at)),
+};
+export const constanciaRepository = {
+  findById: async (executor: Executor, id: string) => (await executor.select().from(constancias).where(eq(constancias.id, id)).limit(1))[0] ?? null,
+  create: async (executor: Executor, value: typeof constancias.$inferInsert) => (await executor.insert(constancias).values(value).returning())[0],
+  delete: async (executor: Executor, id: string) => (await executor.delete(constancias).where(eq(constancias.id, id)).returning())[0] ?? null,
+};
+export const papeleriaRepository = {
+  listItems: (executor: Executor = db) => executor.select().from(papeleriaItems).orderBy(desc(papeleriaItems.created_at)),
+  findItem: async (executor: Executor, id: string) => (await executor.select().from(papeleriaItems).where(eq(papeleriaItems.id, id)).limit(1))[0] ?? null,
+  findItems: (executor: Executor, ids: string[]) => executor.select().from(papeleriaItems).where(inArray(papeleriaItems.id, ids)),
+  createItem: async (executor: Executor, value: typeof papeleriaItems.$inferInsert) => (await executor.insert(papeleriaItems).values(value).returning())[0],
+  updateItem: async (executor: Executor, id: string, value: Partial<typeof papeleriaItems.$inferInsert>) => (await executor.update(papeleriaItems).set(value).where(eq(papeleriaItems.id, id)).returning())[0] ?? null,
+  deleteItem: async (executor: Executor, id: string) => (await executor.delete(papeleriaItems).where(eq(papeleriaItems.id, id)).returning())[0] ?? null,
+  listOrders: (executor: Executor = db, userId?: string, limit = 100) => executor.select().from(papeleriaOrders).where(userId ? eq(papeleriaOrders.user_id, userId) : undefined).orderBy(desc(papeleriaOrders.created_at)).limit(Math.min(200, Math.max(1, limit))),
+  orderItems: (executor: Executor, orderId: string) => executor.select().from(papeleriaOrderItems).where(eq(papeleriaOrderItems.order_id, orderId)),
+};
 export const papeleriaOrderRepository = {
   findById: async (executor: Executor, id: string) => (await executor.select().from(papeleriaOrders).where(eq(papeleriaOrders.id, id)).limit(1))[0] ?? null,
   close: async (executor: Executor, id: string, username: string) => (await executor.update(papeleriaOrders).set({ status: 'CLOSED', closed_at: new Date(), closed_by: username }).where(and(eq(papeleriaOrders.id, id), eq(papeleriaOrders.status, 'OPEN'))).returning())[0] ?? null,
