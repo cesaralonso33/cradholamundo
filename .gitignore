@@ -3,6 +3,7 @@ dist/
 frontend/dist/
 frontend/node_modules/
 .env
+.env.*.local
 *.log
 .DS_Store
 .superpowers/
