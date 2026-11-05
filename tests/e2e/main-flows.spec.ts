@@ -111,15 +111,15 @@ test("real browser setup, 2FA login cookie, and disable flow", async ({ page }) 
   await page.locator('input[type="password"]').fill(password!);
   await page.getByRole("button", { name: "Entrar" }).click();
   await expect(page.getByText(/Ingresa el código de verificación/)).toBeVisible();
-  await page.getByLabel("Código").fill(generateSync({ secret }));
+  await page.locator('input[inputmode="numeric"]').fill(generateSync({ secret }));
   await page.getByRole("button", { name: "Verificar" }).click();
   await expect(page).toHaveURL(/\/$/);
   expect(await page.evaluate(() => document.cookie)).not.toMatch(/(?:^|; )token=/);
   expect((await page.request.get("/api/auth/me")).ok()).toBeTruthy();
 
   await page.goto("/settings");
-  await page.getByLabel("Contraseña").fill(password!);
-  await page.getByLabel("Código 2FA").fill(generateSync({ secret }));
+  await page.locator('input[type="password"]').fill(password!);
+  await page.locator('input[inputmode="numeric"]').fill(generateSync({ secret }));
   await page.getByRole("button", { name: "Desactivar 2FA" }).click();
   await expect(page.getByText("2FA desactivado.")).toBeVisible();
   await page.request.post("/api/auth/logout");
