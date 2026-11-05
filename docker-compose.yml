@@ -19,7 +19,7 @@ services:
     build: .
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env}@db:5432/inventario?schema=public
+      DATABASE_URL: ${DATABASE_URL:?Define DATABASE_URL en .env con host db}
       JWT_SECRET: ${JWT_SECRET:?Define JWT_SECRET en .env}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Define ADMIN_PASSWORD en .env}
       LOGIN_MAX_FAILURES: ${LOGIN_MAX_FAILURES:-4}

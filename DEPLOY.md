@@ -19,10 +19,11 @@ cp .env.docker.example .env
 Edita `.env` y sustituye obligatoriamente:
 - `APP_PORT` (por defecto `55896`)
 - `POSTGRES_PASSWORD`
+- `DATABASE_URL` (debe apuntar al host Compose `db`, base `inventario`)
 - `JWT_SECRET` (usa una cadena larga y aleatoria)
 - `ADMIN_PASSWORD` (contraseña inicial del administrador)
 
-El Compose falla intencionadamente si faltan los tres secretos. No publiques `.env`.
+`DATABASE_URL` debe incluir la misma contraseña que `POSTGRES_PASSWORD`, codificada para URI. Por ejemplo, si la contraseña elegida fuera `clave@con:reservados`, escribe `clave%40con%3Areservados` en la URL: `DATABASE_URL=postgresql://postgres:clave%40con%3Areservados@db:5432/inventario?schema=public`. Codifica cada carácter reservado de la contraseña (por ejemplo `@` → `%40`, `:` → `%3A`, `/` → `%2F`, `#` → `%23`, `%` → `%25`); no codifiques la URL completa. El Compose falla intencionadamente si falta `DATABASE_URL` o cualquiera de los secretos. No publiques `.env`.
 
 3. Construye y levanta todo:
 

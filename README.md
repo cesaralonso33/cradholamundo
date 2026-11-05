@@ -52,6 +52,7 @@ docker compose up -d --build
 ```
 
 Consulta [DEPLOY.md](DEPLOY.md) para la guía completa.
+Al copiar `.env.docker.example`, reemplaza también `DATABASE_URL` con el host `db` y la contraseña de `POSTGRES_PASSWORD` URL-encoded; por ejemplo, `@` se escribe `%40` y `:` como `%3A`. No publiques `.env`.
 
 ## Desarrollo
 
