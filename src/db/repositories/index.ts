@@ -13,6 +13,7 @@ const safePage = (page: number, size: number, max = 100) => ({ page: Math.max(1,
 export const productRepository = {
   findBySku: async (executor: Executor, sku: string) => (await executor.select().from(products).where(eq(products.sku, sku)).limit(1))[0] ?? null,
   setQuantity: async (executor: Executor, id: string, quantity: number) => (await executor.update(products).set({ quantity }).where(eq(products.id, id)).returning())[0],
+  updateBySku: async (executor: Executor, sku: string, value: Partial<NewProduct>) => (await executor.update(products).set(value).where(eq(products.sku, sku)).returning())[0] ?? null,
   adjustStock: async (executor: Executor, id: string, direction: 'IN' | 'OUT', quantity: number) => (await executor.update(products).set({ quantity: direction === 'IN' ? sql`${products.quantity} + ${quantity}` : sql`${products.quantity} - ${quantity}` }).where(and(eq(products.id, id), direction === 'OUT' ? sql`${products.quantity} >= ${quantity}` : undefined)).returning())[0] ?? null,
   saveBySku: async (executor: Executor, value: NewProduct) => (await executor.insert(products).values(value).onConflictDoUpdate({ target: products.sku, set: { name: value.name, category: value.category, location: value.location, quantity: value.quantity } }).returning())[0],
   list: async (executor: Executor = db, options: { search?: string; location?: string; page?: number; pageSize?: number } = {}) => {
@@ -22,6 +23,15 @@ export const productRepository = {
     if (options.search?.trim()) { const term = `%${options.search.trim()}%`; clauses.push(or(ilike(products.sku, term), ilike(products.name, term), ilike(products.category, term), ilike(products.location, term))!); }
     const where = clauses.length ? and(...clauses) : undefined;
     return paged(executor.select().from(products).where(where).orderBy(desc(products.updated_at)).limit(pageSize).offset((page - 1) * pageSize), executor.select({ count: count() }).from(products).where(where), page, pageSize);
+  },
+  deleteBySku: async (executor: Executor, sku: string) => (await executor.delete(products).where(eq(products.sku, sku)).returning())[0] ?? null,
+};
+export const locationHistoryRepository = {
+  create: async (executor: Executor, value: typeof locationHistories.$inferInsert) => (await executor.insert(locationHistories).values(value).returning())[0],
+  listForProduct: async (executor: Executor = db, productId: string, page = 1, pageSize = 20) => {
+    const safe = safePage(page, pageSize);
+    const where = eq(locationHistories.product_id, productId);
+    return paged(executor.select().from(locationHistories).where(where).orderBy(desc(locationHistories.created_at)).limit(safe.pageSize).offset((safe.page - 1) * safe.pageSize), executor.select({ count: count() }).from(locationHistories).where(where), safe.page, safe.pageSize);
   },
 };
 export const inventoryMovementRepository = {
