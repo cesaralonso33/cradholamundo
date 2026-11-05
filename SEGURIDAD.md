@@ -18,3 +18,5 @@ No registrar ni versionar secretos, respaldos reales o uploads. Probar únicamen
 ## Ejecución aislada E2E/seguridad
 
 En la ejecución Task 6 se usó PostgreSQL desechable puerto 55436, backend 3336/3340 y frontend 55936; los secretos se inyectaron como variables temporales de proceso. Para reproducir, usar puertos alternativos libres, base recién inicializada y migrada, y separar ejecuciones E2E/security para evitar lockout cruzado. No usar una DB compartida ni credenciales reales. Evidencia y límites en `e2e-security-report.md`.
+
+La continuación auth del 2026-11-05 creó `task6_auth_e2e_20261105` y ejecutó Playwright contra API 3337/frontend 55937. Ambos casos nuevos (2FA y cuenta limitada) fallaron: extracción/generación del TOTP produjo clave inválida y la creación del rol limitado no fue exitosa. LoginAttempt no quedó aislado entre pruebas. No declarar aprobados 2FA, navegación/denegación limitada ni la suite de seguridad. Ver `.superpowers/sdd/2026-11-05-modernizacion-inventario/task-6-auth-e2e-report.md`.
