@@ -114,7 +114,7 @@ export const backupRepository = {
     await tx.delete(locationHistories); await tx.delete(inventoryMovements); await tx.delete(papeleriaItems); await tx.delete(products); await tx.delete(users); await tx.delete(settings);
     const insert = async (table: any, key: string, columns: string[]) => {
       const rows = arrays[key] ?? [];
-      if (rows.length) await tx.insert(table).values(rows.map(row => Object.fromEntries(columns.filter(column => column in row).map(column => [column, row[column]]))));
+      if (rows.length) await tx.insert(table).values(rows.map(row => Object.fromEntries(columns.filter(column => column in row).map(column => [column, column.endsWith('_at') && typeof row[column] === 'string' ? new Date(row[column] as string) : row[column]]))));
     };
     await insert(settings, 'settings', ['key', 'value']);
     await insert(users, 'users', ['id', 'username', 'email', 'password', 'role', 'totp_secret', 'two_factor_enabled', 'created_at', 'updated_at']);

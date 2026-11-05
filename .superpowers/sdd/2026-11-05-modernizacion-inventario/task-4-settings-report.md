@@ -1,23 +1,26 @@
 # Task 4 — settings, backup y auditoría
 
-## Alcance
+## Semántica de backup y restauración
 
-Migración de `src/routes/settings.ts`, `src/routes/backup.ts`, `src/routes/audit.ts` y dependencias directas desde Prisma a Drizzle/repositorios existentes. No se modificaron auth, inventario, empleados/papelería, frontend ni OpenAPI central.
+- `GET /api/backup` (admin) produce una exportación segura: los registros de usuarios no incluyen `password` ni `totp_secret`. La metadata marca `includes_sensitive_user_data: false`.
+- El backup seguro **no se puede restaurar completo**: `POST /api/backup/restore` lo rechaza antes de tocar la base y responde `400` con el mensaje `backup excludes password and TOTP; export with includeSensitive=true to restore`.
+- Solo `GET /api/backup?includeSensitive=true` (admin) incluye esos campos y marca la exportación como sensible. El restore completo exige ese marcador y que cada usuario incluya password y TOTP (el TOTP puede ser `null`). Restore permanece admin-only y se ejecuta dentro de una transacción Drizzle.
+- Los payloads y datos de producto se validan con Zod; un error de validación/database durante el reemplazo revierte la transacción.
 
-## Cambios
+## Pruebas y verificación
 
-- Configuración mantiene permisos `settings`; la administración de API key (crear, activar, revocar) conserva acceso exclusivo admin.
-- Validación Zod en escritura settings, activación API, filtros/paginación de auditoría y contrato básico del backup.
-- Auditoría conserva filtros action/username/entityType y paginación con `pageSize` máximo 100 mediante `auditRepository`.
-- Backup continúa siendo admin-only. Exportación omite password y TOTP por defecto; solo `GET /api/backup?includeSensitive=true` exporta los campos sensibles. Restore requiere admin y aplica reemplazo en transacción Drizzle.
-- `src/lib/settings.ts` ahora carga la caché mediante el repositorio Drizzle.
+Se añadió `tests/integration/backup-security.test.ts`, que crea y elimina una base desechable y prueba las rutas HTTP reales:
 
-## Verificación
+1. Export seguro no expone `password`/`totp_secret`; export sensible sí los incluye.
+2. Restore de backup sensible válido recupera datos y credenciales.
+3. Backup seguro recibe rechazo explícito sin borrar usuarios.
+4. Payload inválido produce `400` y se verifica que el estado previo permanezca (rollback).
+5. Un usuario no admin recibe `403` en export y restore.
 
-- `npm run build`: correcto.
-- `npm test`: incompleto. 12 tests pasaron, 25 fueron omitidos y suites con PostgreSQL fallaron por no estar configurado `DATABASE_URL`; health además no pudo inicializar Prisma por faltar `prisma generate` en la instalación limpia.
-- No fue posible ejecutar pruebas de integración propias sobre PostgreSQL real ni demostrar RED→GREEN/rollback: no hay URL configurada, servicio PostgreSQL local ni Docker en este entorno. Queda pendiente y no se afirma validación de runtime.
+RED: inicialmente la prueba HTTP falló en 2 casos (restore sensible `500`, backup seguro no se rechazaba) y pasó 1. GREEN: después de la corrección, 3/3 pruebas de integración pasan.
 
-## Riesgo pendiente
+PostgreSQL 14 local temporal, inicializado con `initdb` fuera del repo, puerto `55439`; las pruebas crean sus propias bases aisladas y las eliminan. `npm run build` pasa. `npm test` pasa completo: 11 archivos, 48 tests.
 
-El restore y la restauración desde backup sin hashes de password deben verificarse con el contrato de recuperación acordado; el backup normal excluye dichos hashes y el campo sigue siendo requerido en la tabla User.
+## Alcance preservado
+
+Cambios limitados a backup, su repositorio directo, pruebas y documentos de Task 4. No se tocaron auth, inventario, empleados/papelería, frontend ni OpenAPI central.

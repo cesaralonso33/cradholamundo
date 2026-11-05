@@ -6,7 +6,18 @@ import { logAudit } from '../lib/audit.js';
 import { invalidateSettingsCache } from '../lib/settings.js';
 import { toHttpError } from '../lib/errors.js';
 
-const backupSchema = z.object({ meta: z.object({ app: z.literal('inventario'), version: z.literal(1) }).passthrough().optional(), data: z.record(z.string(), z.array(z.record(z.string(), z.unknown())).default([])) });
+const objectRows = z.array(z.record(z.string(), z.unknown()));
+const backupDataSchema = z.object({
+  settings: objectRows, users: objectRows,
+  products: z.array(z.object({ id: z.string(), sku: z.string(), name: z.string(), quantity: z.number().int(), min_stock: z.number().int() }).passthrough()),
+  movements: objectRows, locationHistory: objectRows, employees: objectRows, constancias: objectRows,
+  papeleriaItems: objectRows, orders: objectRows, orderItems: objectRows,
+}).strict();
+const backupSchema = z.object({
+  meta: z.object({ app: z.literal('inventario'), version: z.literal(1), includes_sensitive_user_data: z.boolean() }).passthrough(),
+  data: backupDataSchema,
+});
+const userCredentialsSchema = z.array(z.object({ password: z.string().min(1), totp_secret: z.string().nullable() }).passthrough());
 
 export async function backupRoutes(app: FastifyInstance) {
   app.get('/api/backup', { preHandler: [authenticate, adminOnly] }, async (req, reply) => {
@@ -15,12 +26,17 @@ export async function backupRoutes(app: FastifyInstance) {
     const includeSensitive = query.data.includeSensitive === 'true';
     const data = await backupRepository.exportAll(undefined, { includeSensitiveUserData: includeSensitive });
     await logAudit(req, 'backup.exported', 'backup', undefined, { includeSensitive });
-    return { meta: { app: 'inventario', version: 1, exported_at: new Date().toISOString() }, data };
+    return { meta: { app: 'inventario', version: 1, exported_at: new Date().toISOString(), includes_sensitive_user_data: includeSensitive }, data };
   });
 
   app.post('/api/backup/restore', { preHandler: [authenticate, adminOnly], bodyLimit: 50 * 1024 * 1024 }, async (req, reply) => {
     const parsed = backupSchema.safeParse(req.body);
     if (!parsed.success) return reply.code(400).send({ error: 'invalid backup file' });
+    if (!parsed.data.meta.includes_sensitive_user_data) {
+      return reply.code(400).send({ error: 'backup excludes password and TOTP; export with includeSensitive=true to restore' });
+    }
+    const usersParsed = userCredentialsSchema.safeParse(parsed.data.data.users);
+    if (!usersParsed.success) return reply.code(400).send({ error: 'invalid backup file' });
     const data = parsed.data.data;
     try {
       await backupRepository.restore(data);
