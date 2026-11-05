@@ -1,5 +1,6 @@
 import type { FastifyRequest } from "fastify";
-import { prisma } from "./prisma.js";
+import { db } from '../db/client.js';
+import { auditRepository } from '../db/repositories/index.js';
 
 export async function logAudit(
   req: any,
@@ -14,8 +15,7 @@ export async function logAudit(
         ? (details as any).username
         : undefined;
 
-    await prisma.auditLog.create({
-      data: {
+    await auditRepository.create(db, {
         user_id: req.user?.id || null,
         username: req.user?.username || detailUsername || req.body?.username || null,
         action,
@@ -23,7 +23,6 @@ export async function logAudit(
         entity_id: entityId || null,
         details: typeof details === "string" ? details : details ? JSON.stringify(details) : null,
         ip: req.ip || null,
-      },
     });
   } catch {
     // Never fail the request because of audit logging.

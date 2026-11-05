@@ -1,4 +1,5 @@
-import { prisma } from "./prisma.js";
+import { db } from '../db/client.js';
+import { roleRepository } from '../db/repositories/index.js';
 
 export const PERMISSIONS = [
   { key: "products", label: "Inventario / Productos" },
@@ -18,7 +19,7 @@ export const DEFAULT_USER_PERMISSIONS = ["products", "history", "papeleria"];
 
 export async function getRolePermissions(roleName: string): Promise<string[]> {
   if (roleName === "admin") return [...ALL_PERMISSIONS];
-  const role = await prisma.role.findUnique({ where: { name: roleName }, select: { permissions: true } });
+  const role = await roleRepository.findByName(db, roleName);
   return role?.permissions ?? DEFAULT_USER_PERMISSIONS;
 }
 

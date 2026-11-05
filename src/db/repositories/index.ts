@@ -1,4 +1,4 @@
-import { and, count, desc, eq, ilike, or, sql } from 'drizzle-orm';
+import { and, count, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
 import { db } from '../client.js';
 import { auditLogs, constancias, employees, inventoryMovements, locationHistories, papeleriaItems, papeleriaOrderItems, papeleriaOrders, products, roles, settings, users, type NewInventoryMovement, type NewProduct } from '../schema.js';
 import type { Database } from '../client.js';
@@ -28,8 +28,27 @@ export const inventoryMovementRepository = {
   create: async (executor: Executor, value: NewInventoryMovement) => (await executor.insert(inventoryMovements).values(value).returning())[0],
   listForProduct: (executor: Executor, productId: string) => executor.select().from(inventoryMovements).where(eq(inventoryMovements.product_id, productId)).orderBy(desc(inventoryMovements.created_at)),
 };
-export const userRepository = { findById: async (executor: Executor, id: string) => (await executor.select().from(users).where(eq(users.id, id)).limit(1))[0] ?? null, list: (executor: Executor = db) => executor.select({ id: users.id, username: users.username, email: users.email, role: users.role, created_at: users.created_at, updated_at: users.updated_at }).from(users).orderBy(desc(users.created_at)) };
-export const roleRepository = { list: (executor: Executor = db) => executor.select().from(roles).orderBy(roles.created_at), findByName: async (executor: Executor, name: string) => (await executor.select().from(roles).where(eq(roles.name, name)).limit(1))[0] ?? null };
+export const userRepository = {
+  findById: async (executor: Executor, id: string) => (await executor.select().from(users).where(eq(users.id, id)).limit(1))[0] ?? null,
+  findByUsername: async (executor: Executor, username: string) => (await executor.select().from(users).where(eq(users.username, username)).limit(1))[0] ?? null,
+  list: (executor: Executor = db) => executor.select({ id: users.id, username: users.username, email: users.email, role: users.role, created_at: users.created_at, updated_at: users.updated_at }).from(users).orderBy(desc(users.created_at)),
+  listForLogin: (executor: Executor, username?: string) => executor.select().from(users).where(username ? eq(users.username, username) : undefined),
+  create: async (executor: Executor, value: typeof users.$inferInsert) => (await executor.insert(users).values(value).returning())[0],
+  update: async (executor: Executor, id: string, value: Partial<typeof users.$inferInsert>) => (await executor.update(users).set(value).where(eq(users.id, id)).returning())[0] ?? null,
+  updateManyRole: (executor: Executor, from: string, to: string) => executor.update(users).set({ role: to }).where(eq(users.role, from)),
+  delete: async (executor: Executor, id: string) => (await executor.delete(users).where(eq(users.id, id)).returning())[0] ?? null,
+  countByRole: async (executor: Executor, role: string) => (await executor.select({ count: count() }).from(users).where(eq(users.role, role)))[0]?.count ?? 0,
+};
+export const roleRepository = {
+  list: (executor: Executor = db) => executor.select().from(roles).orderBy(roles.created_at),
+  findById: async (executor: Executor, id: string) => (await executor.select().from(roles).where(eq(roles.id, id)).limit(1))[0] ?? null,
+  findByName: async (executor: Executor, name: string) => (await executor.select().from(roles).where(eq(roles.name, name)).limit(1))[0] ?? null,
+  create: async (executor: Executor, value: typeof roles.$inferInsert) => (await executor.insert(roles).values(value).returning())[0],
+  update: async (executor: Executor, id: string, value: Partial<typeof roles.$inferInsert>) => (await executor.update(roles).set(value).where(eq(roles.id, id)).returning())[0] ?? null,
+  delete: async (executor: Executor, id: string) => (await executor.delete(roles).where(eq(roles.id, id)).returning())[0] ?? null,
+  countUsers: async (executor: Executor, role: string) => (await executor.select({ count: count() }).from(users).where(eq(users.role, role)))[0]?.count ?? 0,
+  countsByRole: async (executor: Executor) => executor.select({ role: users.role, count: count() }).from(users).groupBy(users.role),
+};
 export const employeeRepository = { list: (executor: Executor = db) => executor.select().from(employees).orderBy(desc(employees.created_at)), findById: async (executor: Executor, id: string) => (await executor.select().from(employees).where(eq(employees.id, id)).limit(1))[0] ?? null, constancias: (executor: Executor, employeeId: string) => executor.select().from(constancias).where(eq(constancias.employee_id, employeeId)).orderBy(desc(constancias.created_at)) };
 export const papeleriaRepository = { listItems: (executor: Executor = db) => executor.select().from(papeleriaItems).orderBy(desc(papeleriaItems.created_at)), listOrders: (executor: Executor = db, userId?: string, limit = 100) => executor.select().from(papeleriaOrders).where(userId ? eq(papeleriaOrders.user_id, userId) : undefined).orderBy(desc(papeleriaOrders.created_at)).limit(Math.min(200, Math.max(1, limit))), orderItems: (executor: Executor, orderId: string) => executor.select().from(papeleriaOrderItems).where(eq(papeleriaOrderItems.order_id, orderId)) };
 export const papeleriaOrderRepository = {

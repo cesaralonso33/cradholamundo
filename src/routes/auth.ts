@@ -3,7 +3,10 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { generateSecret, generateURI, verifySync } from "otplib";
 import QRCode from "qrcode";
-import { prisma } from "../lib/prisma.js";
+import { db } from "../db/client.js";
+import { roleRepository, userRepository } from "../db/repositories/index.js";
+import { z } from 'zod';
+import { toHttpError } from '../lib/errors.js';
 import { authenticate, requirePermission, signToken } from "../lib/auth.js";
 import { getRolePermissions } from "../lib/permissions.js";
 import { validatePassword } from "../lib/security.js";
@@ -17,6 +20,11 @@ import {
 } from "../lib/loginGuard.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
+const registerSchema = z.object({ username: z.string().min(1), password: z.string().min(1), email: z.string().optional().nullable(), role: z.string().optional() });
+const loginSchema = z.object({ password: z.string().min(1), username: z.string().optional() });
+const twoFactorCompleteSchema = z.object({ tempToken: z.string().min(1), code: z.string().min(1) });
+const codeSchema = z.object({ code: z.union([z.string(), z.number()]).optional() });
+const disableSchema = z.object({ password: z.union([z.string(), z.number()]).optional(), code: z.union([z.string(), z.number()]).optional() });
 
 function cookieOptions() {
   const isProduction = process.env.NODE_ENV === "production";
@@ -30,35 +38,36 @@ function cookieOptions() {
 }
 
 export async function authRoutes(app: FastifyInstance) {
+  app.setErrorHandler((error, _request, reply) => { const mapped = toHttpError(error); return reply.code(mapped.statusCode).send(mapped.body); });
   app.post("/api/auth/register", {
     preHandler: [authenticate, requirePermission("users")],
     config: { rateLimit: { max: 10, timeWindow: "1 minute" } },
   }, async (req, reply) => {
-    const { username, password, email, role } = (req.body as any) || {};
-    if (!username || !password) {
+    const parsed = registerSchema.safeParse(req.body || {});
+    if (!parsed.success) {
       return reply.code(400).send({ error: "username and password required" });
     }
+    const { username, password, email, role } = parsed.data;
     const passwordError = validatePassword(password);
     if (passwordError) return reply.code(400).send({ error: passwordError });
 
     const roleName = String(role || "user");
-    const roleExists = await prisma.role.findUnique({ where: { name: roleName }, select: { name: true } });
+    const roleExists = await roleRepository.findByName(db, roleName);
     if (!roleExists) return reply.code(400).send({ error: "role does not exist" });
     if (roleName === "admin" && req.user.role !== "admin") {
       return reply.code(403).send({ error: "only admins can assign the admin role" });
     }
 
-    const exists = await prisma.user.findUnique({ where: { username } });
+    const exists = await userRepository.findByUsername(db, username);
     if (exists) return reply.code(409).send({ error: "username already exists" });
     const hash = await bcrypt.hash(password, 10);
-    const user = await prisma.user.create({
-      data: {
-        username,
-        email: email || null,
-        password: hash,
-        role: roleName,
-      },
-    });
+    let user;
+    try {
+      user = await userRepository.create(db, { username, email: email || null, password: hash, role: roleName });
+    } catch (error: any) {
+      if (error.code === '23505' || error.cause?.code === '23505') return reply.code(409).send({ error: 'username already exists' });
+      throw error;
+    }
     await logAudit(req, "user.created", "user", user.id, { username, role: roleName });
     const token = signToken(user);
     const permissions = await getRolePermissions(user.role);
@@ -71,8 +80,9 @@ export async function authRoutes(app: FastifyInstance) {
   app.post("/api/auth/login", {
     config: { rateLimit: { max: 8, timeWindow: "1 minute" } },
   }, async (req, reply) => {
-    const { password, username } = (req.body as any) || {};
-    if (!password) return reply.code(400).send({ error: "password required" });
+    const parsed = loginSchema.safeParse(req.body || {});
+    if (!parsed.success) return reply.code(400).send({ error: "password required" });
+    const { password, username } = parsed.data;
 
     const identifiers = loginIdentifiers(req.ip, username);
     const block = await getActiveBlock(identifiers);
@@ -87,9 +97,7 @@ export async function authRoutes(app: FastifyInstance) {
         });
     }
 
-    const candidates = username
-      ? await prisma.user.findMany({ where: { username } })
-      : await prisma.user.findMany();
+    const candidates = await userRepository.listForLogin(db, username);
     candidates.sort((a, b) => (a.role === "admin" ? -1 : b.role === "admin" ? 1 : 0));
 
     let matched: (typeof candidates)[number] | null = null;
@@ -136,15 +144,16 @@ export async function authRoutes(app: FastifyInstance) {
   });
 
   app.post("/api/auth/2fa/complete", async (req, reply) => {
-    const { tempToken, code } = (req.body as any) || {};
-    if (!tempToken || !code) return reply.code(400).send({ error: "tempToken and code required" });
+    const parsed = twoFactorCompleteSchema.safeParse(req.body || {});
+    if (!parsed.success) return reply.code(400).send({ error: "tempToken and code required" });
+    const { tempToken, code } = parsed.data;
     let payload: any;
     try {
       payload = jwt.verify(tempToken, JWT_SECRET) as any;
     } catch {
       return reply.code(401).send({ error: "invalid or expired temp token" });
     }
-    const user = await prisma.user.findUnique({ where: { id: payload.sub } });
+    const user = await userRepository.findById(db, payload.sub);
     if (!user || !user.two_factor_enabled || !user.totp_secret) {
       return reply.code(401).send({ error: "2fa not enabled" });
     }
@@ -167,7 +176,7 @@ export async function authRoutes(app: FastifyInstance) {
   });
 
   app.get("/api/auth/me", { preHandler: authenticate }, async (req) => {
-    const dbUser = await prisma.user.findUnique({ where: { id: req.user.id }, select: { email: true, two_factor_enabled: true } });
+    const dbUser = await userRepository.findById(db, req.user.id);
     const permissions = await getRolePermissions(req.user.role);
     return { ...req.user, email: dbUser?.email, two_factor_enabled: dbUser?.two_factor_enabled ?? false, permissions };
   });
@@ -175,10 +184,7 @@ export async function authRoutes(app: FastifyInstance) {
   // ---- 2FA management ----
   app.post("/api/auth/2fa/setup", { preHandler: authenticate }, async (req) => {
     const secret = generateSecret();
-    await prisma.user.update({
-      where: { id: req.user.id },
-      data: { totp_secret: secret, two_factor_enabled: false },
-    });
+    await userRepository.update(db, req.user.id, { totp_secret: secret, two_factor_enabled: false });
     await logAudit(req, "2fa.setup", "user", req.user.id);
     const otpauth = generateURI({ label: req.user.username, issuer: "Inventario", secret });
     const qr = await QRCode.toDataURL(otpauth);
@@ -186,21 +192,23 @@ export async function authRoutes(app: FastifyInstance) {
   });
 
   app.post("/api/auth/2fa/verify", { preHandler: authenticate }, async (req, reply) => {
-    const { code } = (req.body as any) || {};
-    const user = await prisma.user.findUnique({ where: { id: req.user.id }, select: { totp_secret: true } });
+    const parsed = codeSchema.safeParse(req.body || {});
+    const { code } = parsed.success ? parsed.data : {};
+    const user = await userRepository.findById(db, req.user.id);
     if (!user?.totp_secret) return reply.code(400).send({ error: "2fa not set up" });
     const valid = verifySync({ token: String(code), secret: user.totp_secret }).valid;
     if (!valid) return reply.code(400).send({ error: "invalid 2fa code" });
-    await prisma.user.update({ where: { id: req.user.id }, data: { two_factor_enabled: true } });
+    await userRepository.update(db, req.user.id, { two_factor_enabled: true });
     await logAudit(req, "2fa.enabled", "user", req.user.id);
     return { ok: true };
   });
 
   app.post("/api/auth/2fa/disable", { preHandler: authenticate }, async (req, reply) => {
-    const { password, code } = (req.body as any) || {};
-    const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+    const parsed = disableSchema.safeParse(req.body || {});
+    const { password, code } = parsed.success ? parsed.data : {};
+    const user = await userRepository.findById(db, req.user.id);
     if (!user) return reply.code(404).send({ error: "not found" });
-    if (!password || !(await bcrypt.compare(password, user.password))) {
+    if (!password || !(await bcrypt.compare(String(password), user.password))) {
       return reply.code(401).send({ error: "invalid password" });
     }
     if (user.two_factor_enabled && user.totp_secret) {
@@ -208,10 +216,7 @@ export async function authRoutes(app: FastifyInstance) {
         return reply.code(400).send({ error: "invalid 2fa code" });
       }
     }
-    await prisma.user.update({
-      where: { id: req.user.id },
-      data: { totp_secret: null, two_factor_enabled: false },
-    });
+    await userRepository.update(db, req.user.id, { totp_secret: null, two_factor_enabled: false });
     await logAudit(req, "2fa.disabled", "user", req.user.id);
     return { ok: true };
   });

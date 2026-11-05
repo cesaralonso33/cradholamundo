@@ -1,6 +1,9 @@
 import jwt from "jsonwebtoken";
+import { eq } from 'drizzle-orm';
+import { users } from '../db/schema.js';
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { prisma } from "./prisma.js";
+import { db } from "../db/client.js";
+import { userRepository } from "../db/repositories/index.js";
 import { validateApiKey } from "./apiKey.js";
 import { getRolePermissions } from "./permissions.js";
 
@@ -32,10 +35,7 @@ export async function authenticate(req: FastifyRequest, reply: FastifyReply) {
     if (!(await validateApiKey(apiKey))) {
       return reply.code(401).send({ error: "invalid api key" });
     }
-    const admin = await prisma.user.findFirst({
-      where: { role: "admin" },
-      select: { id: true, username: true, role: true },
-    });
+    const admin = (await db.select({ id: users.id, username: users.username, role: users.role }).from(users).where(eq(users.role, 'admin')).limit(1))[0];
     if (!admin) return reply.code(401).send({ error: "no admin user" });
     req.user = admin;
     return;
@@ -45,10 +45,8 @@ export async function authenticate(req: FastifyRequest, reply: FastifyReply) {
   if (!token) return reply.code(401).send({ error: "missing token" });
   try {
     const payload = jwt.verify(token, JWT_SECRET) as any;
-    const user = await prisma.user.findUnique({
-      where: { id: payload.sub },
-      select: { id: true, username: true, role: true },
-    });
+    const found = await userRepository.findById(db, payload.sub);
+    const user = found && { id: found.id, username: found.username, role: found.role };
     if (!user) return reply.code(401).send({ error: "invalid user" });
     req.user = user;
   } catch {

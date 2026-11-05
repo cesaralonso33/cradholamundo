@@ -12,6 +12,7 @@
 - [x] Línea base ejecutada y documentada en `REPORTE_PRUEBAS.md` (backend build pasa; backend test requiere `DATABASE_URL`; frontend build y tests pasan).
 - [x] Esquema Drizzle, cliente tipado, configuración y migración inicial (`Task 2`).
 - [x] Task 3: capa inicial tipada de repositorios Drizzle y servicios; reglas de movimientos/cierre, errores y validación centralizados. Migración de rutas sigue pendiente.
+- [x] Task 4 (auth/administración): rutas auth, users y roles en Drizzle; utilidades compartidas de autenticación, permisos, auditoría e intentos de login migradas; tests de integración con PostgreSQL aislado.
 - [ ] Pruebas de integración, seguridad y E2E.
 - [ ] Verificación Docker y documentación final.
 
