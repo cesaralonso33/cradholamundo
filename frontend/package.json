@@ -25,11 +25,11 @@
     "vue-tsc": "^3.3.14"
   },
   "dependencies": {
-    "@primeuix/themes": "^3.1.0",
-    "@primevue/themes": "^4.4.1",
+    "@lucide/vue": "^1.69.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "dexie": "^4.4.7",
-    "primeicons": "^7.0.0",
-    "primevue": "^4.4.1",
+    "tailwind-merge": "^3.7.0",
     "vue": "^3.5.44",
     "vue-router": "^5.4.0",
     "zod": "^4.6.7"
