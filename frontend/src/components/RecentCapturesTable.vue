@@ -6,7 +6,7 @@
         {{ showExtra ? "Ocultar detalles" : "Mostrar cantidad y categoría" }}
       </button>
     </div>
-    <table class="min-w-full text-sm">
+    <table class="responsive-table min-w-full text-sm">
       <thead class="bg-gray-100 sticky top-0">
         <tr>
           <th class="text-left px-3 py-2">Fecha y hora</th>
@@ -21,17 +21,17 @@
       </thead>
       <tbody>
         <tr v-for="row in rows" :key="row.id" class="border-t hover:bg-gray-50">
-          <td class="px-3 py-1.5 text-gray-500">{{ formatTime(row.createdAt) }}</td>
-          <td class="px-3 py-1.5 font-mono">{{ row.sku }}</td>
-          <td class="px-3 py-1.5">{{ row.name }}</td>
-          <td v-if="showExtra" class="px-3 py-1.5">{{ row.category || "-" }}</td>
-          <td class="px-3 py-1.5">{{ row.location || "-" }}</td>
-          <td v-if="showExtra" class="px-3 py-1.5 text-right">{{ row.quantity }}</td>
-          <td class="px-3 py-1.5 text-center">
+          <td data-label="Fecha" class="px-3 py-1.5 text-gray-500">{{ formatTime(row.createdAt) }}</td>
+          <td data-label="SKU" class="px-3 py-1.5 font-mono">{{ row.sku }}</td>
+          <td data-label="Nombre" class="px-3 py-1.5">{{ row.name }}</td>
+          <td v-if="showExtra" data-label="Categoría" class="px-3 py-1.5">{{ row.category || "-" }}</td>
+          <td data-label="Ubicación" class="px-3 py-1.5">{{ row.location || "-" }}</td>
+          <td v-if="showExtra" data-label="Cantidad" class="px-3 py-1.5 text-right">{{ row.quantity }}</td>
+          <td data-label="Sync" class="px-3 py-1.5 text-center">
             <span v-if="row.synced" class="text-green-600">✓</span>
             <span v-else class="text-amber-500">…</span>
           </td>
-          <td class="px-3 py-1.5 text-center space-x-2">
+          <td data-label="Acciones" class="px-3 py-1.5 text-center space-x-2">
             <button v-if="canEdit(row)" @click="askEdit(row)"
               class="text-xs text-blue-600 hover:underline">Editar</button>
             <button v-if="row.location !== 'Archivo'" @click="askArchive(row.sku)"

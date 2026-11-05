@@ -97,6 +97,14 @@ table tbody tr:hover { background-color: #f8fafc; }
   .app-shell__content { margin-left: 0; }
   .app-shell__menu-toggle { position: fixed; top: 0.85rem; left: 0.85rem; z-index: 30; display: inline-flex; align-items: center; justify-content: center; width: 2.75rem; height: 2.75rem; border: 1px solid var(--line); border-radius: 0.7rem; background: white; color: var(--ink); box-shadow: 0 5px 16px rgba(23, 32, 51, 0.12); cursor: pointer; }
   .app-shell__scrim { position: fixed; inset: 0; z-index: 19; display: block; background: rgba(15, 23, 42, 0.35); }
+  .responsive-table { display: block; min-width: 0; }
+  .responsive-table thead { display: none; }
+  .responsive-table tbody, .responsive-table tr { display: block; }
+  .responsive-table tr { margin: 0.75rem; border: 1px solid var(--line); border-radius: 0.75rem; background: white; padding: 0.4rem 0.75rem; }
+  .responsive-table td { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; border: 0; padding: 0.55rem 0; text-align: right; }
+  .responsive-table td::before { content: attr(data-label); color: var(--muted); font-size: 0.72rem; font-weight: 700; text-align: left; }
+  .responsive-table td[colspan] { display: block; text-align: center; }
+  .responsive-table td[colspan]::before { content: none; }
 }
 
 .app-shell__workspace { margin: 0.35rem 0 0; color: #94a3b8; font-size: 0.76rem; }

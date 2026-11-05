@@ -35,7 +35,7 @@
     <p v-else-if="loading" role="status" class="text-sm text-gray-600 mb-2">Cargando empleados...</p>
     <section class="overflow-auto border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
       <h2 class="font-semibold mb-2">Empleados</h2>
-      <table class="min-w-full text-sm">
+       <table class="responsive-table min-w-full text-sm">
         <thead class="bg-gray-100">
           <tr>
             <th class="text-left px-3 py-2">Nombre</th>
@@ -47,11 +47,11 @@
         </thead>
         <tbody>
           <tr v-for="e in employees" :key="e.id" class="border-t">
-            <td class="px-3 py-1.5">{{ e.name }}</td>
-            <td class="px-3 py-1.5">{{ e.position || "-" }}</td>
-            <td class="px-3 py-1.5">{{ e.email || "-" }}</td>
-            <td class="px-3 py-1.5">{{ e._count?.constancias ?? 0 }}</td>
-            <td class="px-3 py-1.5 text-right space-x-2">
+             <td data-label="Nombre" class="px-3 py-1.5">{{ e.name }}</td>
+             <td data-label="Puesto" class="px-3 py-1.5">{{ e.position || "-" }}</td>
+             <td data-label="Email" class="px-3 py-1.5">{{ e.email || "-" }}</td>
+             <td data-label="Constancias" class="px-3 py-1.5">{{ e._count?.constancias ?? 0 }}</td>
+             <td data-label="Acciones" class="px-3 py-1.5 text-right space-x-2">
               <button @click="select(e)" class="text-blue-600 text-xs hover:underline">Constancias</button>
               <button v-if="isAdmin" @click="remove(e.id)" class="text-red-600 text-xs hover:underline">Eliminar</button>
             </td>

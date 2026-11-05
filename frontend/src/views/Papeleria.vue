@@ -30,7 +30,7 @@
         <p v-if="orderMsg" class="text-sm mb-2" :class="orderErr ? 'text-red-600' : 'text-green-600'">{{ orderMsg }}</p>
 
         <div class="overflow-auto border rounded">
-          <table class="min-w-full text-sm">
+          <table class="responsive-table min-w-full text-sm">
             <thead class="bg-gray-100">
               <tr>
                 <th class="text-left px-3 py-2">Folio</th>

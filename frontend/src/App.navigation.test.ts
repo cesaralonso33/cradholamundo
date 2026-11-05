@@ -46,6 +46,7 @@ describe("global navigation", () => {
     expect(wrapper.find("aside.app-shell__sidebar").exists()).toBe(true);
     expect(wrapper.find("aside.app-shell__sidebar").classes()).toContain("app-shell__sidebar--light");
     expect(wrapper.text()).toContain("Operación");
+    expect(wrapper.find('a[href="/"]').text()).toContain("Inventario");
     expect(wrapper.find("button[aria-label='Abrir menú']").exists()).toBe(true);
     expect(wrapper.find("nav.app-shell__nav").classes()).toContain("app-shell__nav");
     expect(wrapper.text()).toContain("Salir (ana)");
@@ -82,6 +83,9 @@ describe("global navigation", () => {
     expect(wrapper.find("aside.app-shell__sidebar").classes()).not.toContain("is-open");
     await wrapper.get("button[aria-label='Abrir menú']").trigger("click");
     expect(wrapper.find("aside.app-shell__sidebar").classes()).toContain("is-open");
+    expect(wrapper.get("button[aria-label='Cerrar menú']").attributes("aria-controls")).toBe("app-sidebar");
+    await wrapper.get("button[aria-label='Cerrar menú']").trigger("keydown", { key: "Escape" });
+    expect(wrapper.find("aside.app-shell__sidebar").classes()).not.toContain("is-open");
     wrapper.unmount();
   });
 });
