@@ -54,15 +54,17 @@ export async function employeeRoutes(app: FastifyInstance) {
     let id: string; try { id = parseId(req.params); } catch (error) { const e = toHttpError(error); return reply.code(e.statusCode).send(e.body); }
     if (!await employeeRepository.findById(db, id)) return reply.code(404).send({ error: 'employee not found' });
     let title = ''; let description = ''; let filePath: string | null = null; let fileName: string | null = null;
+    const storedFiles: string[] = [];
+    const removeStoredFiles = (except?: string | null) => { for (const stored of storedFiles) if (stored !== except) try { fs.unlinkSync(path.join(uploadsDir, stored)); } catch {} };
     try {
       for await (const part of req.parts()) {
-        if (part.type === 'file') { if (!isAllowedUpload(part.filename)) return reply.code(400).send({ error: 'file type not allowed' }); const ext = path.extname(part.filename || '').toLowerCase(); const stored = randomUUID() + ext; await pipeline(part.file, fs.createWriteStream(path.join(uploadsDir, stored))); filePath = stored; fileName = part.filename || stored; }
+        if (part.type === 'file') { if (!isAllowedUpload(part.filename)) { removeStoredFiles(); return reply.code(400).send({ error: 'file type not allowed' }); } const ext = path.extname(part.filename || '').toLowerCase(); const stored = randomUUID() + ext; await pipeline(part.file, fs.createWriteStream(path.join(uploadsDir, stored))); storedFiles.push(stored); filePath = stored; fileName = part.filename || stored; }
         else if (part.fieldname === 'title') title = String(part.value || ''); else if (part.fieldname === 'description') description = String(part.value || '');
       }
-    } catch { if (filePath) try { fs.unlinkSync(path.join(uploadsDir, filePath)); } catch {} return reply.code(400).send({ error: 'invalid input' }); }
-    if (!title) { if (filePath) try { fs.unlinkSync(path.join(uploadsDir, filePath)); } catch {} return reply.code(400).send({ error: 'title required' }); }
-    try { const created = await constanciaRepository.create(db, { employee_id: id, title, description: description || null, file_path: filePath, file_name: fileName }); await logAudit(req, 'constancia.created', 'constancia', created.id, { employee_id: id, title }); return created; }
-    catch (error) { if (filePath) try { fs.unlinkSync(path.join(uploadsDir, filePath)); } catch {} const e = toHttpError(error); return reply.code(e.statusCode).send(e.body); }
+    } catch { removeStoredFiles(); return reply.code(400).send({ error: 'invalid input' }); }
+    if (!title) { removeStoredFiles(); return reply.code(400).send({ error: 'title required' }); }
+    try { const created = await constanciaRepository.create(db, { employee_id: id, title, description: description || null, file_path: filePath, file_name: fileName }); removeStoredFiles(filePath); await logAudit(req, 'constancia.created', 'constancia', created.id, { employee_id: id, title }); return created; }
+    catch (error) { removeStoredFiles(); const e = toHttpError(error); return reply.code(e.statusCode).send(e.body); }
   });
   app.delete('/api/constancias/:id', { preHandler: [authenticate, adminOnly] }, async (req, reply) => {
     try { const id = parseId(req.params); const item = await constanciaRepository.findById(db, id); if (!item) return reply.code(404).send({ error: 'not found' }); if (item.file_path) { const fullPath = path.join(uploadsDir, item.file_path); if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath); } await constanciaRepository.delete(db, id); await logAudit(req, 'constancia.deleted', 'constancia', id); return { ok: true }; }

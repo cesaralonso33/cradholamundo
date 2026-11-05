@@ -1,8 +1,10 @@
 import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
+import fs from 'node:fs';
 import { Client, Pool } from 'pg';
 import Fastify from 'fastify';
 import multipart from '@fastify/multipart';
+import { uploadsDir } from '../../src/lib/paths.js';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 const baseUrl = process.env.DATABASE_URL;
@@ -35,6 +37,14 @@ describe('employees, constancias and papeleria HTTP routes (isolated PostgreSQL)
     const multipartBody = ['--task4', 'Content-Disposition: form-data; name="title"', '', 'Certificate', '--task4', 'Content-Disposition: form-data; name="file"; filename="bad.exe"', 'Content-Type: application/octet-stream', '', 'x', '--task4--', ''].join('\r\n');
     const badFile = await app.inject({ method: 'POST', url: `/api/employees/${id}/constancias`, headers: { authorization: `Bearer ${workerToken}`, 'content-type': 'multipart/form-data; boundary=task4' }, payload: multipartBody });
     expect(badFile.statusCode).toBe(400); expect(badFile.json()).toEqual({ error: 'file type not allowed' });
+    const filesBefore = new Set(fs.readdirSync(uploadsDir));
+    const twoFiles = ['--task4', 'Content-Disposition: form-data; name="title"', '', 'Certificate', '--task4', 'Content-Disposition: form-data; name="file"; filename="first.pdf"', 'Content-Type: application/pdf', '', 'pdf bytes', '--task4', 'Content-Disposition: form-data; name="file2"; filename="second.exe"', 'Content-Type: application/octet-stream', '', 'bad bytes', '--task4--', ''].join('\r\n');
+    const lateBadFile = await app.inject({ method: 'POST', url: `/api/employees/${id}/constancias`, headers: { authorization: `Bearer ${workerToken}`, 'content-type': 'multipart/form-data; boundary=task4' }, payload: twoFiles });
+    expect(lateBadFile.statusCode).toBe(400); expect(fs.readdirSync(uploadsDir).filter(file => !filesBefore.has(file))).toEqual([]);
+    const allowedBody = ['--task4', 'Content-Disposition: form-data; name="title"', '', 'Certificate', '--task4', 'Content-Disposition: form-data; name="file"; filename="certificate.pdf"', 'Content-Type: application/pdf', '', 'known synthetic pdf bytes', '--task4--', ''].join('\r\n');
+    const allowedFile = await app.inject({ method: 'POST', url: `/api/employees/${id}/constancias`, headers: { authorization: `Bearer ${workerToken}`, 'content-type': 'multipart/form-data; boundary=task4' }, payload: allowedBody });
+    expect(allowedFile.statusCode).toBe(200); expect(fs.readFileSync(`${uploadsDir}/${allowedFile.json().file_path}`, 'utf8')).toContain('known synthetic pdf bytes');
+    expect((await request('DELETE', `/api/constancias/${allowedFile.json().id}`)).statusCode).toBe(200);
     expect((await request('DELETE', `/api/employees/${id}`, undefined, workerToken)).statusCode).toBe(403);
     expect((await request('DELETE', `/api/employees/${id}`)).json()).toEqual({ ok: true });
   });
@@ -51,6 +61,12 @@ describe('employees, constancias and papeleria HTTP routes (isolated PostgreSQL)
     expect(closeResults.map(r => r.statusCode).sort()).toEqual([200, 400]);
     expect((await client.query(`SELECT status FROM "PapeleriaOrder" WHERE id=$1`, [order.id])).rows[0].status).toBe('CLOSED');
     expect(Number((await client.query(`SELECT quantity FROM "PapeleriaItem" WHERE id=$1`, [item.json().id])).rows[0].quantity)).toBe(10);
+  });
+  it.each([['fractional', 1.5], ['zero', 0], ['nonnumeric', 'not-a-number'], ['negative', -3]])('normalizes %s order quantities exactly as the legacy route', async (_label, quantity) => {
+    const item = await request('POST', '/api/papeleria', { name: `Qty-${String(quantity)}` });
+    const created = await request('POST', '/api/papeleria/orders', { items: [{ itemId: item.json().id, quantity }] });
+    expect(created.statusCode).toBe(200);
+    expect(Number((await client.query('SELECT quantity FROM "PapeleriaOrderItem" WHERE order_id=$1', [created.json().id])).rows[0].quantity)).toBe(1);
   });
   it('rolls back a partially replaced order when a referenced item violates a foreign key', async () => {
     const item = await request('POST', '/api/papeleria', { name: 'Item' });

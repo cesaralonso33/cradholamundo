@@ -11,7 +11,7 @@ import { readExcelRows } from '../lib/excel.js';
 import { logAudit } from '../lib/audit.js';
 
 const idParams = z.object({ id: z.string().min(1) });
-const orderItem = z.object({ itemId: z.string().min(1), quantity: z.coerce.number().int().positive().default(1), note: z.string().nullable().optional() });
+const orderItem = z.object({ itemId: z.string().min(1), quantity: z.unknown().transform(value => Math.max(1, Math.floor(Number(value) || 1))), note: z.string().nullable().optional() });
 const itemsSchema = z.array(orderItem).min(1);
 const itemBody = z.object({ name: z.string().min(1), unit: z.string().nullable().optional(), quantity: z.coerce.number().int().optional() });
 const parseError = (error: unknown, reply: any) => { const e = toHttpError(error); return reply.code(e.statusCode).send(e.body); };

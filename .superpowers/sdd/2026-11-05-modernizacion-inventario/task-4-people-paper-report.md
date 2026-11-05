@@ -12,6 +12,12 @@ Se probó `tests/integration/people-paper.test.ts` contra PostgreSQL real, con b
 
 Una primera aserción de propiedad recibió 200 porque el helper de petición omitía el token y usaba admin por defecto. Se corrigió el escenario para comprobar explícitamente admin y un segundo usuario distinto; no fue un defecto de la aplicación.
 
+### Corrección de revisión — equivalencia legacy y multipart
+
+La prueba RED de cantidades reprodujo que `1.5`, `0`, un texto no numérico y un negativo devolvían 400, mientras la ruta legacy normalizaba todos esos valores a `1` mediante `Math.max(1, Math.floor(Number(quantity) || 1))`. La ruta aplica ahora esa transformación en Zod en el borde y la prueba HTTP confirma en PostgreSQL cada cantidad persistida como 1.
+
+La prueba RED multipart enviaba primero un PDF sintético permitido y después un `.exe`; el endpoint respondía 400 pero dejaba el PDF huérfano en `uploads`. Ahora se rastrean los archivos escritos y se eliminan todos si una parte posterior no es permitida, falla el multipart, falta el título o falla la persistencia. La prueba comprueba que el directorio vuelve al estado previo. También se prueba el flujo permitido: bytes sintéticos persistidos en el archivo asociado a la constancia y su posterior eliminación por el endpoint; no se usaron documentos reales.
+
 ## Verificación
 
 Entorno: PostgreSQL 14.5 local desechable, puerto 55434; DB base de test `people_paper_base`, y DB aislada distinta para el archivo de integración. No se usaron datos reales.
@@ -23,8 +29,6 @@ npm run build
 npm test
 ```
 
-Resultados observados: integración **3/3**, `tsc` correcto, suite completa **10 archivos / 41 tests aprobados**.
+Resultados iniciales: integración **3/3**, `tsc` correcto, suite completa **10 archivos / 41 tests aprobados**. Tras los hallazgos de revisión, integración **7/7** (incluye cuatro valores de cantidad, multipart con archivo huérfano y persistencia/eliminación de archivo sintético permitido); build y suite completa se vuelven a ejecutar en esta revisión.
 
-## Limitaciones
-
-La integración verifica rechazo de payload multipart inválido/no multipart, pero no cubre una importación XLSX válida ni la persistencia/descarga de un archivo permitido. Estas rutas conservan el parser/validación y flujo de almacenamiento existentes; pruebas de fixtures válidos quedan pendientes.
+No se añadió fixture XLSX válido; la persistencia de constancia permitida sí se verificó usando contenido sintético. No hubo cambios fuera de los dos dominios del alcance.
