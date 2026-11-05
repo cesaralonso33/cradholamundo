@@ -38,4 +38,15 @@ Resultados: migraciones Drizzle aplicadas; integración de inventario **3/3**; b
 
 ## Commit
 
-El informe y los cambios de inventario se incluyen juntos en el commit de cierre de Task 4.
+La migración inicial se cerró en el commit `b8425d808545c461e44bc93b77a35346600f5a61`. La revisión posterior de hallazgos se registra en un commit separado.
+
+## Correcciones de revisión (2026-11-05)
+
+- Se añadieron pruebas RED en PostgreSQL para cantidad fraccionaria, auditoría fallida y creación concurrente con `prevent_duplicates=true`. Confirmaron la respuesta genérica incorrecta, que la auditoría fallida dejaba confirmar creación y que las dos creaciones pasaban sin serialización.
+- Lista filtra ubicación y búsqueda conjuntamente con `AND`; la ruta conserva la precedencia histórica `search || q || ''`. La integración verifica resultados de otra ubicación, `search` vacío con `q` y ambos parámetros con `search` no vacío.
+- Movimiento valida cantidad entera positiva con Zod antes del servicio; cantidades no positivas conservan `quantity must be positive`, fracciones devuelven `quantity must be a positive integer`.
+- Auditorías de creación/upsert, edición, archive, eliminación y movimiento ahora se insertan mediante el executor de la transacción de la mutación; ya no se usa el helper compartido que ignora fallos. Pruebas con trigger PostgreSQL que rechaza auditoría demuestran rollback de producto y de stock/movimiento.
+- Creación serializa por SKU con advisory transaction lock y vuelve a revisar existencia/ajuste de duplicados dentro de la transacción. Edición/archive/eliminación bloquean la fila (`FOR UPDATE`). Archive concurrente devuelve un único éxito y un conflicto, y registra un solo historial.
+- La integración comprueba permisos de history/archive, denegación de archive de otro usuario y filtros de ubicación; también prueba que una edición concurrente que omite quantity no pisa una actualización concurrente de quantity.
+
+Verificación real posterior: `npx vitest run tests/integration/products.test.ts` (**8/8**), `npm run build` (**pasa**) y `npm test` (**9 archivos, 38 tests pasados**) con PostgreSQL aislado `inventory_task4` en `127.0.0.1:55434`.

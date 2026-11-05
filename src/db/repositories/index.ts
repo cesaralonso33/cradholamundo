@@ -12,6 +12,7 @@ const safePage = (page: number, size: number, max = 100) => ({ page: Math.max(1,
 
 export const productRepository = {
   findBySku: async (executor: Executor, sku: string) => (await executor.select().from(products).where(eq(products.sku, sku)).limit(1))[0] ?? null,
+  findBySkuForUpdate: async (executor: Parameters<Parameters<Database['transaction']>[0]>[0], sku: string) => (await executor.select().from(products).where(eq(products.sku, sku)).for('update').limit(1))[0] ?? null,
   setQuantity: async (executor: Executor, id: string, quantity: number) => (await executor.update(products).set({ quantity }).where(eq(products.id, id)).returning())[0],
   updateBySku: async (executor: Executor, sku: string, value: Partial<NewProduct>) => (await executor.update(products).set(value).where(eq(products.sku, sku)).returning())[0] ?? null,
   adjustStock: async (executor: Executor, id: string, direction: 'IN' | 'OUT', quantity: number) => (await executor.update(products).set({ quantity: direction === 'IN' ? sql`${products.quantity} + ${quantity}` : sql`${products.quantity} - ${quantity}` }).where(and(eq(products.id, id), direction === 'OUT' ? sql`${products.quantity} >= ${quantity}` : undefined)).returning())[0] ?? null,
