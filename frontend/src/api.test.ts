@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { apiCreateProduct } from "./api";
+import { apiCreateProduct, apiDownloadBackup } from "./api";
 
 describe("HTTP client errors", () => {
   afterEach(() => vi.unstubAllGlobals());
@@ -15,5 +15,19 @@ describe("HTTP client errors", () => {
     expect(thrown.message).toBe("Conflict");
     expect(thrown.details).toEqual([{ field: "sku" }]);
     expect(thrown.retryAfter).toBe(status === 429 ? "15" : undefined);
+  });
+});
+
+describe("backup downloads", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("requests sensitive backup data only when explicitly requested", async () => {
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response("{}", { status: 200 })));
+    vi.stubGlobal("fetch", fetchMock);
+    await apiDownloadBackup();
+    await apiDownloadBackup(true);
+    expect(fetchMock.mock.calls[0][0]).toContain("/api/backup");
+    expect(fetchMock.mock.calls[0][0]).not.toContain("includeSensitive");
+    expect(fetchMock.mock.calls[1][0]).toContain("includeSensitive=true");
   });
 });

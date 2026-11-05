@@ -23,6 +23,11 @@ Task 6 está **parcial**: el movimiento desde UI y stock persistido sí se compr
 
 ## Reejecución de auth (2026-11-05)
 
+## Controles de descarga sensible (2026-11-05)
+
+- Settings conserva el backup seguro y ahora restringe el backup completo sensible a admins, con confirmación previa que advierte explícitamente sobre contraseñas y secretos TOTP; la solicitud usa `includeSensitive=true`. Tests de componente comprueban visibilidad/no-admin, confirmación y preservación del modo seguro, además del parámetro API.
+- Esta cobertura es de frontend y contrato de URL; no constituye validación E2E de autorización/respuesta/restore en backend. Esa validación integral continúa pendiente, según el alcance parcial indicado arriba. No se modificó backend/original.
+
 - `playwright.config.ts` pasa `ADMIN_PASSWORD: process.env.ADMIN_PASSWORD ?? process.env.E2E_ADMIN_PASSWORD` al backend de Playwright. Para las pruebas auth basta definir `E2E_ADMIN_PASSWORD`; no se versiona ningún valor secreto. `.env.example` deja `ADMIN_PASSWORD` vacío.
 - Se agregó diagnóstico no tolerante al fallo para creación de roles (status y body), y la reproducción confirmó que `POST /api/roles` responde 401 `{"error":"missing token"}`. Las pruebas de auth aún no están aprobadas.
 - Cluster PostgreSQL 14 nuevo en `%LOCALAPPDATA%\Temp\opencode\task6-auth-final`, puerto 55839, DB `task6auth`; `npm run db:migrate` pasó. Sin Docker.

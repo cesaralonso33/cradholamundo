@@ -8,6 +8,12 @@ Se incorporó en `Inventory.vue` un formulario compacto para movimientos IN/OUT,
 
 Verificación: `frontend/npm test` (17/17) y `frontend/npm run build` pasan. Detector Impeccable `detect --json` sobre ambos archivos UI: `[]`. Playwright no pudo iniciar backend porque no está configurado `DATABASE_URL`; se añadió el flujo transaccional que crea producto, registra movimiento desde UI y comprueba stock al estar disponible el entorno PostgreSQL E2E aislado.
 
+## Backup sensible solo para administración
+
+`Settings.vue` conserva el botón de respaldo seguro y añade, dentro del mismo bloque ya restringido a admin, descarga completa restaurable mediante `includeSensitive=true`. Antes de habilitarla se exige una casilla con advertencia explícita de que el archivo contiene contraseñas y secretos TOTP; indica guardarlo cifrado/con acceso restringido. Descargas comparten estado de carga/error, generan nombre de archivo diferenciado y reportan éxito/error accesibles. La capa API mantiene el valor por defecto no sensible.
+
+Tests de `Settings.vue` cubren ocultamiento no admin, confirmación y ruta sensible, y preservación del botón seguro; test de `api.ts` verifica que solo `true` añade el parámetro. RED→GREEN reproducido en el test de API: inicialmente el query sensible no se enviaba, y pasó tras extender el cliente. Verificación final: `frontend npm test` 23/23, `frontend npm run build` correcto, `git diff --check` correcto (solo avisos de normalización LF/CRLF) y detector Impeccable sobre `Settings.vue`: `[]`.
+
 ## Selector de productos en movimientos
 
 El selector ya no carga una única página de 100 productos. `InventoryMovementPanel.vue` consulta el endpoint existente `/api/products` con búsqueda enviada al pulsar Buscar y páginas de 20 resultados; ofrece controles accesibles anterior/siguiente y mantiene los formularios nativos, foco de teclado y layout responsive. Carga, error con reintento y búsqueda sin coincidencias se muestran explícitamente. El formulario existente de movimiento conserva su validación, gestión de offline y conflicto 409.

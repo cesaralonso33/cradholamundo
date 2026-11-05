@@ -232,9 +232,10 @@ export function apiListAuditLogs(page = 1, pageSize = 50, filters: { action?: st
 }
 
 // ---- Backups ----
-export async function apiDownloadBackup(): Promise<Blob> {
+export async function apiDownloadBackup(includeSensitive = false): Promise<Blob> {
   const headers: Record<string, string> = {};
-  const res = await fetch(`${API_BASE}/api/backup`, { headers, credentials: "include" });
+  const params = includeSensitive ? "?includeSensitive=true" : "";
+  const res = await fetch(`${API_BASE}/api/backup${params}`, { headers, credentials: "include" });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.blob();
 }

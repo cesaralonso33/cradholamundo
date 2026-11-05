@@ -97,23 +97,37 @@
       <div>
         <h2 class="font-semibold mb-1">Respaldos de la base de datos</h2>
         <p class="text-xs text-gray-500">
-          Descarga un archivo JSON con todos los datos para restaurar o migrar el proyecto.
+          El respaldo seguro incluye datos operativos para restaurar o migrar el proyecto.
         </p>
       </div>
       <div class="flex flex-wrap gap-2">
-        <button @click="downloadBackup" :disabled="backupLoading"
+        <button @click="downloadBackup()" :disabled="backupLoading"
           class="bg-blue-600 text-white px-4 py-1.5 rounded text-sm hover:bg-blue-700 disabled:opacity-50">
-          {{ backupLoading ? "Generando..." : "Descargar respaldo JSON" }}
+          {{ backupLoading ? "Generando..." : "Descargar respaldo seguro" }}
         </button>
         <label class="border px-4 py-1.5 rounded text-sm cursor-pointer hover:bg-gray-50">
           Restaurar respaldo
           <input type="file" accept=".json,application/json" class="hidden" @change="restoreBackup" />
         </label>
       </div>
-      <p v-if="backupMsg" class="text-sm" :class="backupErr ? 'text-red-600' : 'text-green-600'">{{ backupMsg }}</p>
+      <p v-if="backupMsg" :role="backupErr ? 'alert' : 'status'" aria-live="polite" class="text-sm" :class="backupErr ? 'text-red-600' : 'text-green-600'">{{ backupMsg }}</p>
       <p class="text-xs text-gray-400">
         La restauración reemplaza todos los datos actuales. Los archivos de constancias no se incluyen en el JSON.
       </p>
+      <div class="border-t pt-3 space-y-2">
+        <p class="text-sm font-medium">Respaldo completo sensible</p>
+        <p id="sensitive-backup-warning" class="text-xs text-amber-800">
+          Incluye información sensible de cuentas, como contraseñas y secretos TOTP. Guárdalo cifrado y con acceso restringido.
+        </p>
+        <label class="flex items-start gap-2 text-sm">
+          <input v-model="sensitiveBackupConfirmed" type="checkbox" class="mt-0.5 rounded" aria-describedby="sensitive-backup-warning" />
+          <span>Confirmo que entiendo que este archivo contiene contraseñas y datos TOTP.</span>
+        </label>
+        <button @click="downloadSensitiveBackup" :disabled="backupLoading || !sensitiveBackupConfirmed"
+          class="border border-amber-700 text-amber-900 px-4 py-1.5 rounded text-sm hover:bg-amber-50 disabled:opacity-50 disabled:cursor-not-allowed">
+          {{ sensitiveBackupLoading ? "Generando respaldo sensible..." : "Descargar respaldo completo sensible" }}
+        </button>
+      </div>
     </section>
 
     <section v-if="isAdmin" class="bg-white p-4 rounded shadow max-w-md mt-4 space-y-3">
@@ -192,6 +206,8 @@ const saveError = ref(false);
 const backupLoading = ref(false);
 const backupMsg = ref("");
 const backupErr = ref(false);
+const sensitiveBackupConfirmed = ref(false);
+const sensitiveBackupLoading = ref(false);
 
 const apiConfig = ref({ enabled: false, prefix: null as string | null, hasKey: false });
 const apiLoading = ref(false);
@@ -352,26 +368,33 @@ async function disableTwoFactor() {
   }
 }
 
-async function downloadBackup() {
+async function downloadBackup(includeSensitive = false) {
+  if (includeSensitive && (!isAdmin.value || !sensitiveBackupConfirmed.value)) return;
   backupLoading.value = true;
+  if (includeSensitive) sensitiveBackupLoading.value = true;
   backupMsg.value = "";
   backupErr.value = false;
   try {
-    const blob = await apiDownloadBackup();
+    const blob = await apiDownloadBackup(includeSensitive);
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     const date = new Date().toISOString().slice(0, 10);
     link.href = url;
-    link.download = `inventario-backup-${date}.json`;
+    link.download = `inventario-backup${includeSensitive ? "-completo-sensible" : ""}-${date}.json`;
     link.click();
     URL.revokeObjectURL(url);
-    backupMsg.value = "Respaldo descargado.";
+    backupMsg.value = includeSensitive ? "Respaldo completo sensible descargado. Guárdalo de forma segura." : "Respaldo seguro descargado.";
   } catch (e: any) {
     backupErr.value = true;
     backupMsg.value = e.message || "Error al generar el respaldo.";
   } finally {
     backupLoading.value = false;
+    sensitiveBackupLoading.value = false;
   }
+}
+
+async function downloadSensitiveBackup() {
+  await downloadBackup(true);
 }
 
 async function restoreBackup(event: any) {
