@@ -58,6 +58,28 @@ describe('OpenAPI contract', () => {
     expect(operation('/api/auth/register', 'post').responses['403']).toBeDefined();
   });
 
+  it('documents both login success branches and the actual current-user session shape', () => {
+    const operation = (path: string, method: string) => (openapi.paths[path] as any)[method];
+    const login = operation('/api/auth/login', 'post').responses['200'].content['application/json'].schema;
+    expect(login.oneOf).toHaveLength(2);
+    expect(login.oneOf).toEqual(expect.arrayContaining([
+      expect.objectContaining({ required: ['token', 'user'] }),
+      expect.objectContaining({ required: ['requires2fa', 'tempToken', 'user'] }),
+    ]));
+    expect(login.oneOf[1].properties.requires2fa).toEqual({ type: 'boolean', const: true });
+    expect(login.oneOf[1].properties.tempToken).toEqual({ type: 'string' });
+    expect(login.oneOf.every((branch: any) => branch.properties.user.properties.id && branch.properties.user.properties.username && branch.properties.user.properties.role)).toBe(true);
+
+    const me = operation('/api/auth/me', 'get').responses['200'].content['application/json'].schema;
+    expect(me.required).toEqual(expect.arrayContaining(['id', 'username', 'role', 'permissions', 'two_factor_enabled']));
+    expect(me.properties).toMatchObject({
+      id: { type: 'string' }, username: { type: 'string' }, role: { type: 'string' },
+      email: { type: 'string' }, permissions: { type: 'array', items: { type: 'string' } },
+      two_factor_enabled: { type: 'boolean' },
+    });
+    expect(me.properties.message).toBeUndefined();
+  });
+
   it('provides structured access metadata and success responses for every documented operation', () => {
     for (const [path, methods] of Object.entries(openapi.paths)) {
       for (const [method, raw] of Object.entries(methods)) {

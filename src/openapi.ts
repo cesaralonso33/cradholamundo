@@ -22,13 +22,26 @@ const accessFor = (auth: string) => {
 const paths: Record<string, Record<string, unknown>> = {};
 const objectSchema = (properties: Record<string, unknown>, required: string[] = Object.keys(properties)) => ({ type: 'object', properties, required });
 const string = { type: 'string' };
+const sessionUserSchema = objectSchema({
+  id: string,
+  username: string,
+  role: string,
+  email: string,
+  two_factor_enabled: { type: 'boolean' },
+  permissions: { type: 'array', items: string },
+}, ['id', 'username', 'role', 'two_factor_enabled', 'permissions']);
 const successSchema = (path: string, method: Method) => {
   if (path.endsWith('.json')) return { type: 'object', properties: { openapi: string, info: objectSchema({ title: string, version: string }), paths: { type: 'object' } }, required: ['openapi', 'info', 'paths'] };
   if (path.endsWith('.yaml')) return string;
   if (path === '/health' || path === '/api/health') return objectSchema({ status: string, database: string });
   if (path === '/api/backup' && method === 'get') return objectSchema({ version: string, data: { type: 'object' } }, ['version', 'data']);
   if (path === '/api/auth/logout' || path.includes('/2fa/verify') || path.includes('/2fa/disable')) return objectSchema({ ok: { type: 'boolean' } });
-  if (path === '/api/auth/2fa/complete' || path === '/api/auth/login' || path === '/api/auth/register') return objectSchema({ token: string, user: { type: 'object' } }, ['token', 'user']);
+  if (path === '/api/auth/login') return { oneOf: [
+    objectSchema({ token: string, user: sessionUserSchema }, ['token', 'user']),
+    objectSchema({ requires2fa: { type: 'boolean', const: true }, tempToken: string, user: objectSchema({ id: string, username: string, role: string }) }),
+  ] };
+  if (path === '/api/auth/2fa/complete' || path === '/api/auth/register') return objectSchema({ token: string, user: sessionUserSchema }, ['token', 'user']);
+  if (path === '/api/auth/me') return sessionUserSchema;
   if (method === 'get' && !path.includes('{') && path !== '/api/auth/me' && path !== '/api/settings/api-key') return { type: 'array', items: { type: 'object', additionalProperties: true } };
   if (path.includes('/import')) return objectSchema({ imported: { type: 'integer' } }, ['imported']);
   if (path === '/api/backup/restore') return objectSchema({ message: string });
