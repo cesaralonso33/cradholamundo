@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gray-50 p-4">
+  <div class="min-h-screen p-4 sm:p-6">
     <header class="flex flex-wrap items-center justify-between gap-2 mb-4">
       <h1 class="text-xl font-bold">Configuración</h1>
       <router-link to="/" class="text-blue-600 text-sm">← Inventario</router-link>

@@ -43,6 +43,8 @@ describe("global navigation", () => {
   it("shows the shared menu, current user, and sign-out on authenticated pages", async () => {
     const wrapper = await renderAt("/", { username: "ana", role: "user", permissions: ["users"] });
     expect(wrapper.find("nav").exists()).toBe(true);
+    expect(wrapper.find("header.app-shell__header").exists()).toBe(true);
+    expect(wrapper.find("nav.app-shell__nav").classes()).toContain("app-shell__nav");
     expect(wrapper.text()).toContain("Salir (ana)");
     expect(wrapper.text()).toContain("Inventory content");
     wrapper.unmount();

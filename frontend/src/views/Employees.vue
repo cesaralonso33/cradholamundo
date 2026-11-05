@@ -1,11 +1,11 @@
 <template>
-  <div class="min-h-screen bg-gray-50 p-4">
+  <div class="min-h-screen p-4 sm:p-6">
     <header class="flex flex-wrap items-center justify-between gap-2 mb-4">
       <h1 class="text-xl font-bold">Empleados y constancias</h1>
       <router-link to="/" class="text-blue-600 text-xs sm:text-sm hover:underline">← Inventario</router-link>
     </header>
 
-    <section class="bg-white p-4 rounded shadow mb-4">
+    <section class="border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
       <div class="flex items-center justify-between mb-2">
         <h2 class="font-semibold">Alta de empleado</h2>
         <label class="text-sm text-blue-600 hover:underline cursor-pointer">
@@ -36,7 +36,7 @@
     <p v-if="importMsg" class="text-sm text-gray-600 mb-2">{{ importMsg }}</p>
     <p v-if="loadError" role="alert" class="text-sm text-red-700 mb-2">{{ loadError }}</p>
     <p v-else-if="loading" role="status" class="text-sm text-gray-600 mb-2">Cargando empleados...</p>
-    <section class="bg-white p-4 rounded shadow mb-4 overflow-auto">
+    <section class="overflow-auto border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
       <h2 class="font-semibold mb-2">Empleados</h2>
       <table class="min-w-full text-sm">
         <thead class="bg-gray-100">

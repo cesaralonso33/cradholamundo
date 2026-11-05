@@ -1,15 +1,16 @@
 <template>
-  <div class="min-h-screen bg-gray-50 p-4">
-    <section class="bg-white p-4 rounded shadow mb-4">
+  <div class="min-h-screen p-4 sm:p-6">
+    <div class="mx-auto max-w-7xl">
+    <section class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
       <QuickInventoryForm @captured="onCapture" />
     </section>
 
-    <section class="bg-white p-4 rounded shadow mb-4">
+    <section class="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
       <InventoryMovementPanel />
     </section>
 
-    <section class="bg-white rounded shadow overflow-hidden">
-      <h2 class="font-semibold px-4 pt-4 pb-2">Capturas recientes</h2>
+    <section class="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <h2 class="border-b border-slate-100 px-4 py-4 text-base font-bold text-slate-800 sm:px-5">Capturas recientes</h2>
       <RecentCapturesTable :rows="rows" :server-mode="auth.isAdmin.value" @changed="onChanged" />
       <PaginationBar
         :page="page"
@@ -19,6 +20,7 @@
         @update:pageSize="pageSize = $event"
       />
     </section>
+    </div>
   </div>
 </template>
 
