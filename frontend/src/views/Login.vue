@@ -50,6 +50,7 @@ import { ref, computed, onMounted } from "vue";
 import { useAuth } from "../auth";
 import { useRouter } from "vue-router";
 import { apiHealth } from "../api";
+import { loginSchema } from "../validation/schemas";
 
 const auth = useAuth();
 const router = useRouter();
@@ -110,6 +111,13 @@ async function checkHealth() {
 
 async function submit() {
   error.value = "";
+  if (!pending2fa.value) {
+    const result = loginSchema.safeParse({ password: password.value });
+    if (!result.success) {
+      error.value = result.error.issues[0]?.message || "Ingresa la contraseña.";
+      return;
+    }
+  }
   try {
     if (pending2fa.value) {
       await auth.complete2fa(tempToken.value, code.value);

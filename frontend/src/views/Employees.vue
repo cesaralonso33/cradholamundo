@@ -34,6 +34,8 @@
     </section>
 
     <p v-if="importMsg" class="text-sm text-gray-600 mb-2">{{ importMsg }}</p>
+    <p v-if="loadError" role="alert" class="text-sm text-red-700 mb-2">{{ loadError }}</p>
+    <p v-else-if="loading" role="status" class="text-sm text-gray-600 mb-2">Cargando empleados...</p>
     <section class="bg-white p-4 rounded shadow mb-4 overflow-auto">
       <h2 class="font-semibold mb-2">Empleados</h2>
       <table class="min-w-full text-sm">
@@ -135,6 +137,7 @@ import {
   apiDeleteConstancia,
   apiImportEmployees,
 } from "../api";
+import { employeeSchema } from "../validation/schemas";
 
 const auth = useAuth();
 const isAdmin = auth.isAdmin;
@@ -146,6 +149,8 @@ const form = ref({ name: "", position: "", email: "" });
 const msg = ref("");
 const err = ref(false);
 const importMsg = ref("");
+const loading = ref(false);
+const loadError = ref("");
 
 const cForm = ref({ title: "", description: "" });
 const cFile = ref<File | null>(null);
@@ -157,13 +162,28 @@ function fileUrl(p: string) {
 }
 
 async function load() {
-  const data = await apiListEmployees();
-  employees.value = data.items;
+  loading.value = true;
+  loadError.value = "";
+  try {
+    const data = await apiListEmployees();
+    employees.value = data.items;
+  } catch (e: any) {
+    loadError.value = e.message || "No se pudieron cargar los empleados.";
+  } finally {
+    loading.value = false;
+  }
 }
 
 async function create() {
   msg.value = "";
   err.value = false;
+  const parsed = employeeSchema.safeParse(form.value);
+  if (!parsed.success) {
+    err.value = true;
+    msg.value = parsed.error.issues[0]?.message || "Revisa los datos ingresados.";
+    return;
+  }
+  form.value.name = parsed.data.name;
   try {
     await apiCreateEmployee(form.value);
     msg.value = "Empleado creado.";

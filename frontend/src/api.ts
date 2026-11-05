@@ -17,6 +17,18 @@ interface RequestOptions {
   formData?: FormData;
 }
 
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly details?: unknown,
+    readonly retryAfter?: string | null,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 async function request<T = any>(path: string, options: RequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = {};
 
@@ -40,11 +52,16 @@ async function request<T = any>(path: string, options: RequestOptions = {}): Pro
     });
     if (!res.ok) {
       let message = `HTTP ${res.status}`;
+      let details: unknown;
       try {
         const data = await res.json();
         if (data?.error) message = data.error;
+        details = data?.details ?? data?.issues;
       } catch {}
-      throw new Error(message);
+      if (res.status === 401 && typeof window !== "undefined") {
+        window.dispatchEvent(new Event("inventory:unauthorized"));
+      }
+      throw new ApiError(message, res.status, details, res.headers.get("Retry-After") ?? undefined);
     }
     if (res.status === 204) return undefined as T;
     return (await res.json()) as T;

@@ -25,6 +25,14 @@ function loadUser(): AuthUser | null {
 
 const user = ref<AuthUser | null>(loadUser());
 
+if (typeof window !== "undefined") {
+  window.addEventListener("inventory:unauthorized", () => {
+    user.value = null;
+    localStorage.removeItem(USER_KEY);
+    localStorage.removeItem("inv_token");
+  });
+}
+
 export function useAuth() {
   const isAuthenticated = computed(() => !!user.value);
   const isAdmin = computed(() => user.value?.role === "admin");

@@ -26,6 +26,7 @@
       </button>
     </div>
   </form>
+  <p v-if="error" role="alert" class="mt-2 text-sm text-red-700">{{ error }}</p>
 </template>
 
 <script setup lang="ts">
@@ -34,6 +35,8 @@ import { db } from "../db";
 import { apiCreateProduct, apiGetProduct } from "../api";
 import { getDefaultQty, getDefaultCategory } from "../settings";
 import { useAuth } from "../auth";
+import { ApiError } from "../api";
+import { productCaptureSchema } from "../validation/schemas";
 
 const emit = defineEmits<{ (e: "captured", item: any): void }>();
 
@@ -44,6 +47,7 @@ const form = ref({
   name: "",
   category: "",
 });
+const error = ref("");
 
 const qty = computed(() => getDefaultQty());
 
@@ -73,12 +77,17 @@ function focusNext(field: string) {
 }
 
 async function handleSubmit() {
-  if (!form.value.sku || !form.value.name) return;
+  error.value = "";
+  const validated = productCaptureSchema.safeParse(form.value);
+  if (!validated.success) {
+    error.value = validated.error.issues[0]?.message || "Revisa los datos ingresados.";
+    return;
+  }
   const quantity = getDefaultQty();
   const payload = {
-    sku: form.value.sku.trim(),
-    name: form.value.name.trim(),
-    category: form.value.category.trim() || getDefaultCategory() || null,
+    sku: validated.data.sku,
+    name: validated.data.name,
+    category: validated.data.category?.trim() || getDefaultCategory() || null,
     quantity,
     min_stock: 0,
   };
@@ -105,9 +114,15 @@ async function handleSubmit() {
     await db.captures.update(localId, { synced: 1 });
   } catch (e: any) {
     console.error("sync failed", e);
-    if (String(e?.message || "").includes("409")) {
-      alert("El artículo ya fue capturado (regla de no duplicados activa).");
-      await db.captures.delete(localId);
+    if (e instanceof ApiError && e.status === 409) {
+      error.value = e.message || "El artículo ya existe en el inventario.";
+      await db.captures.update(localId, { synced: 1 });
+    } else if (e instanceof ApiError && e.status === 401) {
+      error.value = "Tu sesión expiró. Inicia sesión nuevamente; la captura quedó guardada localmente.";
+    } else if (e instanceof ApiError && e.status === 403) {
+      error.value = "No tienes permiso para guardar. La captura quedó guardada localmente.";
+    } else {
+      error.value = e instanceof Error ? e.message : "No se pudo sincronizar; la captura quedó guardada localmente.";
     }
     // En errores de red el registro se conserva como pendiente para reintentar.
   }

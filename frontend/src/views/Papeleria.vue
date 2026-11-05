@@ -4,6 +4,8 @@
       <h1 class="text-xl font-bold">Papelería</h1>
       <router-link to="/" class="text-blue-600 text-xs sm:text-sm hover:underline">← Inventario</router-link>
     </header>
+    <p v-if="loadError" role="alert" class="text-sm text-red-700 mb-3">{{ loadError }}</p>
+    <p v-else-if="loading" role="status" class="text-sm text-gray-600 mb-3">Cargando papelería...</p>
 
     <!-- Tabs -->
     <div class="flex gap-2 mb-4">
@@ -233,12 +235,15 @@ import {
   apiUpdatePapeleriaOrder,
   apiClosePapeleriaOrder,
 } from "../api";
+import { papeleriaSchema } from "../validation/schemas";
 
 const auth = useAuth();
 const isAdmin = auth.isAdmin;
 const tab = ref<"orders" | "items">("orders");
 
 const items = shallowRef<any[]>([]);
+const loading = ref(false);
+const loadError = ref("");
 const form = ref({ name: "", unit: "", quantity: 0 });
 const editingItem = ref<any>(null);
 const msg = ref("");
@@ -259,12 +264,20 @@ const selectedOrder = ref<any>(null);
 const editMsg = ref("");
 
 async function load() {
-  const data = await apiListPapeleria();
-  items.value = data.items;
-  items.value.forEach((it) => {
-    if (orderQty.value[it.id] === undefined) orderQty.value[it.id] = 0;
-  });
-  await loadOrders();
+  loading.value = true;
+  loadError.value = "";
+  try {
+    const data = await apiListPapeleria();
+    items.value = data.items;
+    items.value.forEach((it) => {
+      if (orderQty.value[it.id] === undefined) orderQty.value[it.id] = 0;
+    });
+    await loadOrders();
+  } catch (e: any) {
+    loadError.value = e.message || "No se pudo cargar la papelería.";
+  } finally {
+    loading.value = false;
+  }
 }
 
 async function loadOrders() {
@@ -310,12 +323,18 @@ async function submitNewOrder() {
 async function saveItem() {
   msg.value = "";
   err.value = false;
+  const parsed = papeleriaSchema.safeParse(form.value);
+  if (!parsed.success) {
+    err.value = true;
+    msg.value = parsed.error.issues[0]?.message || "Revisa los datos ingresados.";
+    return;
+  }
   try {
     if (editingItem.value) {
-      await apiUpdatePapeleria(editingItem.value.id, form.value);
+      await apiUpdatePapeleria(editingItem.value.id, parsed.data);
       msg.value = "Artículo actualizado.";
     } else {
-      await apiCreatePapeleria(form.value);
+      await apiCreatePapeleria(parsed.data);
       msg.value = "Artículo agregado.";
     }
     cancelEdit();

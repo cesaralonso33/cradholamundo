@@ -28,7 +28,10 @@ function firstAllowedPath(auth: ReturnType<typeof useAuth>) {
     { path: "/settings", permission: "settings" },
     { path: "/api-docs", permission: "api" },
   ];
-  return candidates.find((c) => auth.hasPermission(c.permission))?.path || null;
+  const candidate = candidates.find((c) => auth.hasPermission(c.permission));
+  if (candidate) return candidate.path;
+  if (auth.isAdmin.value) return "/employees";
+  return null;
 }
 
 router.beforeEach((to) => {
@@ -45,6 +48,7 @@ router.beforeEach((to) => {
   if (to.meta.permission && !auth.hasPermission(to.meta.permission as string)) {
     const fallback = firstAllowedPath(auth);
     if (fallback && fallback !== to.path) return fallback;
+    return "/login";
   }
 });
 

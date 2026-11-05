@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { apiCreateProduct } from "./api";
+import { apiCreateProduct, ApiError } from "./api";
 
 let running = false;
 
@@ -21,8 +21,8 @@ export async function syncPendingCaptures(): Promise<void> {
           await db.captures.update(capture.id, { synced: 1 });
         }
       } catch (error: any) {
-        if (String(error?.message || "").includes("409")) {
-          if (capture.id != null) await db.captures.delete(capture.id);
+        if (error instanceof ApiError && error.status === 409) {
+          if (capture.id != null) await db.captures.update(capture.id, { synced: 1 });
           continue;
         }
         // Sin conexión o backend caído: se reintentará después.

@@ -36,7 +36,7 @@
       <div class="flex justify-end">
         <button @click="save" class="bg-blue-600 text-white px-4 py-1.5 rounded text-sm hover:bg-blue-700">Guardar</button>
       </div>
-      <p v-if="msg" class="text-sm text-green-600 mt-2">{{ msg }}</p>
+      <p v-if="msg" role="status" class="text-sm mt-2" :class="saveError ? 'text-red-600' : 'text-green-600'">{{ msg }}</p>
     </section>
 
     <section class="bg-white p-4 rounded shadow max-w-md mt-4 space-y-3">
@@ -163,6 +163,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from "vue";
 import { getDefaultQty, setDefaultQty, getDefaultCategory, setDefaultCategory } from "../settings";
+import { settingsSchema } from "../validation/schemas";
 import {
   apiDownloadBackup,
   apiGenerateApiKey,
@@ -186,6 +187,7 @@ const qty = ref(1);
 const category = ref("");
 const preventDuplicates = ref(false);
 const msg = ref("");
+const saveError = ref(false);
 
 const backupLoading = ref(false);
 const backupMsg = ref("");
@@ -280,13 +282,21 @@ async function copyApiKey() {
 }
 
 async function save() {
-  setDefaultQty(qty.value);
-  setDefaultCategory(category.value);
+  saveError.value = false;
+  const parsed = settingsSchema.safeParse({ quantity: qty.value, category: category.value });
+  if (!parsed.success) {
+    saveError.value = true;
+    msg.value = parsed.error.issues[0]?.message || "Revisa la configuración.";
+    return;
+  }
+  setDefaultQty(parsed.data.quantity);
+  setDefaultCategory(parsed.data.category);
   try {
     await apiSetSetting("prevent_duplicates", preventDuplicates.value ? "true" : "false");
     msg.value = "Guardado.";
   } catch (e: any) {
-    msg.value = "Error al guardar.";
+    saveError.value = true;
+    msg.value = e.message || "Error al guardar.";
   }
   setTimeout(() => (msg.value = ""), 2000);
 }
