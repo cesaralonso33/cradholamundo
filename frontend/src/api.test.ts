@@ -16,6 +16,13 @@ describe("HTTP client errors", () => {
     expect(thrown.details).toEqual([{ field: "sku" }]);
     expect(thrown.retryAfter).toBe(status === 429 ? "15" : undefined);
   });
+
+  it("uses the same-origin API in the production browser", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "1" }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await apiCreateProduct({ sku: "X" });
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/products");
+  });
 });
 
 describe("backup downloads", () => {

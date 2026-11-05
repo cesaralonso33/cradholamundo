@@ -8,7 +8,9 @@ import type {
   Product,
 } from "./types";
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:3000";
+// Production is served by Nginx, which proxies /api to Fastify. A relative
+// base keeps cookies and session checks on the same origin in the VPS.
+const API_BASE = import.meta.env.VITE_API_BASE ?? "";
 const TIMEOUT_MS = 15000;
 
 interface RequestOptions {
