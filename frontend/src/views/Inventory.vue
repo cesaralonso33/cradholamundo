@@ -21,7 +21,7 @@
     </section>
 
     <section class="bg-white p-4 rounded shadow mb-4">
-      <InventoryMovementForm :products="products" />
+      <InventoryMovementPanel />
     </section>
 
     <section class="bg-white rounded shadow overflow-hidden">
@@ -50,7 +50,7 @@ import QuickInventoryForm from "../components/QuickInventoryForm.vue";
 import RecentCapturesTable from "../components/RecentCapturesTable.vue";
 import SyncStatusBadge from "../components/SyncStatusBadge.vue";
 import PaginationBar from "../components/PaginationBar.vue";
-import InventoryMovementForm from "../components/InventoryMovementForm.vue";
+import InventoryMovementPanel from "../components/InventoryMovementPanel.vue";
 
 const auth = useAuth();
 const router = useRouter();
@@ -58,7 +58,6 @@ const rows = shallowRef<any[]>([]);
 const totalRows = ref(0);
 const page = ref(1);
 const pageSize = ref(10);
-const products = ref<{ sku: string; name: string }[]>([]);
 let sub: any;
 
 function logout() {
@@ -105,15 +104,6 @@ async function loadServer() {
   if (page.value > totalPages) page.value = totalPages;
 }
 
-async function loadMovementProducts() {
-  try {
-    const data = await apiListProducts("", 1, 100);
-    products.value = data.items.map((product: any) => ({ sku: product.sku, name: product.name }));
-  } catch {
-    products.value = [];
-  }
-}
-
 function onChanged() {
   if (auth.isAdmin.value) loadServer();
 }
@@ -134,7 +124,6 @@ async function runSync() {
 
 watch([page, pageSize], refresh);
 onMounted(() => {
-  loadMovementProducts();
   if (auth.isAdmin.value) loadServer();
   else subscribe();
   runSync();
