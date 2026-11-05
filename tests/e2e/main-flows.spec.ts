@@ -49,21 +49,65 @@ test("protected routes redirect anonymous users to login", async ({ page }) => {
   }
 });
 
+test("limited account hides and redirects restricted pages and API denies access", async ({ page }) => {
+  test.skip(!password, "Set E2E_ADMIN_PASSWORD for the isolated test database.");
+  await page.goto("/login");
+  await page.locator('input[type="password"]').fill(password!);
+  const loginResponsePromise = page.waitForResponse((response) => response.url().endsWith("/api/auth/login"));
+  await page.getByRole("button", { name: "Entrar" }).click();
+  const loginResponse = await loginResponsePromise;
+  const loginBody = await loginResponse.text();
+  const loginCookies = await page.context().cookies();
+  expect(loginResponse.ok(), `Admin login failed: status=${loginResponse.status()} body=${loginBody}; cookies=${JSON.stringify(loginCookies.map(({ name, httpOnly }) => ({ name, httpOnly })))}`).toBeTruthy();
+  await expect(page).toHaveURL(/\/$/, { message: `Login did not leave /login: status=${loginResponse.status()} body=${loginBody}; cookies=${JSON.stringify(loginCookies.map(({ name, httpOnly }) => ({ name, httpOnly })))}` });
+  const roleName = `e2e-limited-${Date.now()}`;
+  const createRole = await page.evaluate(async (name) => {
+    const response = await fetch("/api/roles", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, description: "Isolated E2E limited role", permissions: ["products"] }) });
+    return { status: response.status, body: await response.text() };
+  }, roleName);
+  expect(createRole.status >= 200 && createRole.status < 300, `POST /api/roles failed: status=${createRole.status} body=${createRole.body}; login=${loginResponse.status()} ${loginBody}; cookies=${JSON.stringify(loginCookies.map(({ name, httpOnly }) => ({ name, httpOnly })))}`).toBeTruthy();
+  const register = await page.evaluate(async (name) => {
+    const response = await fetch("/api/auth/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: name, password: "E2eLimitedPass123!", role: name }) });
+    return { status: response.status, body: await response.text() };
+  }, roleName);
+  expect(register.status >= 200 && register.status < 300, `POST /api/auth/register failed: status=${register.status} body=${register.body}`).toBeTruthy();
+  await page.evaluate(async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    localStorage.removeItem("inv_user");
+    localStorage.removeItem("inv_token");
+  });
+  await page.goto("/login");
+  await page.locator('input[type="password"]').fill("E2eLimitedPass123!");
+  await page.getByRole("button", { name: "Entrar" }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await page.goto("/users");
+  await expect(page).toHaveURL(/\/$/);
+  await page.goto("/settings");
+  await expect(page).toHaveURL(/\/$/);
+  const usersStatus = await page.evaluate(async () => (await fetch("/api/users")).status);
+  expect(usersStatus).toBe(403);
+});
+
 test("real browser setup, 2FA login cookie, and disable flow", async ({ page }) => {
   test.skip(!password, "Set E2E_ADMIN_PASSWORD for the isolated test database.");
   await page.goto("/login");
   await page.locator('input[type="password"]').fill(password!);
+  const loginResponsePromise = page.waitForResponse((response) => response.url().endsWith("/api/auth/login"));
   await page.getByRole("button", { name: "Entrar" }).click();
+  const loginResponse = await loginResponsePromise;
+  expect(loginResponse.ok(), `Admin login failed: status=${loginResponse.status()} body=${await loginResponse.text()}`).toBeTruthy();
   await expect(page).toHaveURL(/\/$/);
   await page.goto("/settings");
   await page.getByRole("button", { name: "Activar 2FA" }).click();
   const secret = (await page.locator("p").filter({ hasText: "Clave manual:" }).locator("code").textContent())!.trim();
-  await page.getByLabel("Código de verificación").fill(generateSync({ secret }));
+  await page.locator('input[inputmode="numeric"]').fill(generateSync({ secret }));
   await page.getByRole("button", { name: "Verificar y activar" }).click();
   await expect(page.getByText("2FA activado correctamente.")).toBeVisible();
 
   await page.request.post("/api/auth/logout");
+  await page.evaluate(() => { localStorage.removeItem("inv_user"); localStorage.removeItem("inv_token"); });
   await page.goto("/login");
+  await expect(page).toHaveURL(/login/);
   await page.locator('input[type="password"]').fill(password!);
   await page.getByRole("button", { name: "Entrar" }).click();
   await expect(page.getByText(/Ingresa el código de verificación/)).toBeVisible();
@@ -79,37 +123,10 @@ test("real browser setup, 2FA login cookie, and disable flow", async ({ page }) 
   await page.getByRole("button", { name: "Desactivar 2FA" }).click();
   await expect(page.getByText("2FA desactivado.")).toBeVisible();
   await page.request.post("/api/auth/logout");
+  await page.evaluate(() => { localStorage.removeItem("inv_user"); localStorage.removeItem("inv_token"); });
   await page.goto("/login");
+  await expect(page).toHaveURL(/login/);
   await page.locator('input[type="password"]').fill(password!);
   await page.getByRole("button", { name: "Entrar" }).click();
   await expect(page).toHaveURL(/\/$/);
-});
-
-test("limited account hides and redirects restricted pages and API denies access", async ({ page }) => {
-  test.skip(!password, "Set E2E_ADMIN_PASSWORD for the isolated test database.");
-  await page.goto("/login");
-  await page.locator('input[type="password"]').fill(password!);
-  await page.getByRole("button", { name: "Entrar" }).click();
-  const roleName = `e2e-limited-${Date.now()}`;
-  const createRole = await page.evaluate(async (name) => {
-    const response = await fetch("/api/roles", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, description: "Isolated E2E limited role", permissions: ["products"] }) });
-    return { status: response.status, body: await response.text() };
-  }, roleName);
-  expect(createRole.status >= 200 && createRole.status < 300, `POST /api/roles failed: status=${createRole.status} body=${createRole.body}`).toBeTruthy();
-  const register = await page.evaluate(async (name) => {
-    const response = await fetch("/api/auth/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: name, password: "E2eLimitedPass123!", role: name }) });
-    return { status: response.status, body: await response.text() };
-  }, roleName);
-  expect(register.status >= 200 && register.status < 300, `POST /api/auth/register failed: status=${register.status} body=${register.body}`).toBeTruthy();
-  await page.evaluate(() => fetch("/api/auth/logout", { method: "POST" }));
-  await page.goto("/login");
-  await page.locator('input[type="password"]').fill("E2eLimitedPass123!");
-  await page.getByRole("button", { name: "Entrar" }).click();
-  await expect(page).toHaveURL(/\/$/);
-  await page.goto("/users");
-  await expect(page).toHaveURL(/\/$/);
-  await page.goto("/settings");
-  await expect(page).toHaveURL(/\/$/);
-  const usersStatus = await page.evaluate(async () => (await fetch("/api/users")).status);
-  expect(usersStatus).toBe(403);
 });
