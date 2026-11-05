@@ -1,20 +1,29 @@
 <template>
   <div>
     <template v-if="auth.isAuthenticated.value && route.path !== '/login'">
-      <aside class="app-shell__sidebar" :class="{ 'is-open': menuOpen }">
+      <aside class="app-shell__sidebar app-shell__sidebar--light" :class="{ 'is-open': menuOpen }">
         <div class="app-shell__brand">
           <span class="app-shell__eyebrow">Operaciones</span>
           <h1>Inventario Rápido</h1>
         </div>
         <nav aria-label="Navegación principal" class="app-shell__nav">
-        <router-link v-if="auth.hasPermission('users')" to="/users" class="text-blue-600 text-xs sm:text-sm hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Usuarios</router-link>
-        <router-link v-if="auth.hasPermission('settings')" to="/settings" class="text-blue-600 text-xs sm:text-sm hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Configuración</router-link>
-        <router-link v-if="auth.hasPermission('history')" to="/history" class="text-blue-600 text-xs sm:text-sm hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Historial</router-link>
-        <router-link v-if="auth.isAdmin.value" to="/employees" class="text-blue-600 text-xs sm:text-sm hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Empleados</router-link>
-        <router-link v-if="auth.isAdmin.value" to="/roles" class="text-blue-600 text-xs sm:text-sm hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Roles</router-link>
-        <router-link v-if="auth.isAdmin.value" to="/audit" class="text-blue-600 text-xs sm:text-sm hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Auditoría</router-link>
-        <router-link v-if="auth.hasPermission('papeleria')" to="/papeleria" class="text-blue-600 text-xs sm:text-sm hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Papelería</router-link>
-        <router-link v-if="auth.hasPermission('api')" to="/api-docs" class="text-blue-600 text-xs sm:text-sm hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">API</router-link>
+          <div class="app-shell__group">
+            <p class="app-shell__group-title">Operación</p>
+            <router-link v-if="auth.hasPermission('history')" to="/history">Historial</router-link>
+            <router-link v-if="auth.hasPermission('papeleria')" to="/papeleria">Papelería</router-link>
+          </div>
+          <div v-if="auth.isAdmin.value || auth.hasPermission('users') || auth.hasPermission('settings')" class="app-shell__group">
+            <p class="app-shell__group-title">Administración</p>
+            <router-link v-if="auth.hasPermission('users')" to="/users">Usuarios</router-link>
+            <router-link v-if="auth.hasPermission('settings')" to="/settings">Configuración</router-link>
+            <router-link v-if="auth.isAdmin.value" to="/employees">Empleados</router-link>
+            <router-link v-if="auth.isAdmin.value" to="/roles">Roles</router-link>
+            <router-link v-if="auth.isAdmin.value" to="/audit">Auditoría</router-link>
+          </div>
+          <div v-if="auth.hasPermission('api')" class="app-shell__group">
+            <p class="app-shell__group-title">Recursos</p>
+            <router-link to="/api-docs">API</router-link>
+          </div>
           <SyncStatusBadge />
           <button @click="logout" class="app-shell__logout">Salir ({{ auth.user.value?.username }})</button>
         </nav>

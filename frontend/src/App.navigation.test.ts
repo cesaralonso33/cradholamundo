@@ -44,6 +44,8 @@ describe("global navigation", () => {
     const wrapper = await renderAt("/", { username: "ana", role: "user", permissions: ["users"] });
     expect(wrapper.find("nav").exists()).toBe(true);
     expect(wrapper.find("aside.app-shell__sidebar").exists()).toBe(true);
+    expect(wrapper.find("aside.app-shell__sidebar").classes()).toContain("app-shell__sidebar--light");
+    expect(wrapper.text()).toContain("Operación");
     expect(wrapper.find("button[aria-label='Abrir menú']").exists()).toBe(true);
     expect(wrapper.find("nav.app-shell__nav").classes()).toContain("app-shell__nav");
     expect(wrapper.text()).toContain("Salir (ana)");
