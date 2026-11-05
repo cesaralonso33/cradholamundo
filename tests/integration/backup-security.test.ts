@@ -52,6 +52,12 @@ describe('backup security over isolated PostgreSQL', () => {
     expect(safe.json().data.users[0]).not.toHaveProperty('totp_secret');
     const sensitive = await request('GET', '/api/backup?includeSensitive=true');
     expect(sensitive.json().data.users).toContainEqual(expect.objectContaining({ password: 'admin-hash', totp_secret: 'admin-totp' }));
+    const events = await client.query(`SELECT action,details FROM "AuditLog" WHERE action='backup.exported' ORDER BY details`);
+    expect(events.rows).toHaveLength(2);
+    expect(events.rows.map(row => row.details)).toContain('{"includeSensitive":false}');
+    expect(events.rows.map(row => row.details)).toContain('{"includeSensitive":true}');
+    expect(JSON.stringify(events.rows)).not.toContain('admin-hash');
+    expect(JSON.stringify(events.rows)).not.toContain('admin-totp');
   });
 
   it('restores an explicit sensitive backup and denies non-admin access', async () => {
@@ -60,6 +66,7 @@ describe('backup security over isolated PostgreSQL', () => {
     const restored = await request('POST', '/api/backup/restore', exported.json());
     expect(restored.statusCode).toBe(200);
     expect((await client.query(`SELECT username,password,totp_secret FROM "User" WHERE id='backup-admin'`)).rows[0]).toEqual({ username: 'backup-admin', password: 'admin-hash', totp_secret: 'admin-totp' });
+    expect(Number((await client.query(`SELECT count(*)::int AS count FROM "AuditLog" WHERE action='backup.restored'`)).rows[0].count)).toBe(1);
     expect((await request('GET', '/api/backup', undefined, userToken)).statusCode).toBe(403);
     expect((await request('POST', '/api/backup/restore', exported.json(), userToken)).statusCode).toBe(403);
   });
@@ -77,5 +84,25 @@ describe('backup security over isolated PostgreSQL', () => {
     expect(invalid.statusCode).toBe(400);
     expect((await client.query(`SELECT username FROM "User" WHERE id='backup-admin'`)).rows[0].username).toBe('backup-admin');
     expect((await client.query(`SELECT count(*)::int AS count FROM "Product"`)).rows[0].count).toBe(0);
+  });
+
+  it('rolls back restore and withholds export when the audit insert fails', async () => {
+    const exported = (await request('GET', '/api/backup?includeSensitive=true')).json();
+    await client.query(`UPDATE "User" SET username='changed' WHERE id='backup-admin'`);
+    await client.query(`INSERT INTO "Product" (id,sku,name,quantity,min_stock,updated_at) VALUES ('keep-product','KEEP','Keep on rollback',3,0,now())`);
+    await client.query(`CREATE FUNCTION reject_backup_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action IN ('backup.exported','backup.restored') THEN RAISE EXCEPTION 'audit unavailable'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_backup_audit BEFORE INSERT ON "AuditLog" FOR EACH ROW EXECUTE FUNCTION reject_backup_audit()`);
+    try {
+      const restore = await request('POST', '/api/backup/restore', exported);
+      expect(restore.statusCode).toBe(500);
+      expect((await client.query(`SELECT username FROM "User" WHERE id='backup-admin'`)).rows[0].username).toBe('changed');
+      expect((await client.query(`SELECT sku FROM "Product"`)).rows.map(row => row.sku)).toEqual(['KEEP']);
+      const exportResponse = await request('GET', '/api/backup?includeSensitive=true');
+      expect(exportResponse.statusCode).toBe(500);
+      expect(exportResponse.body).not.toContain('admin-hash');
+      expect(exportResponse.body).not.toContain('admin-totp');
+      expect(Number((await client.query(`SELECT count(*)::int AS count FROM "AuditLog" WHERE action IN ('backup.exported','backup.restored')`)).rows[0].count)).toBe(1);
+    } finally {
+      await client.query('DROP TRIGGER IF EXISTS reject_backup_audit ON "AuditLog"; DROP FUNCTION IF EXISTS reject_backup_audit()');
+    }
   });
 });

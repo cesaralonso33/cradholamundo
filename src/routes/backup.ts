@@ -1,8 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { backupRepository } from '../db/repositories/index.js';
+import { auditRepository, backupRepository } from '../db/repositories/index.js';
+import { db } from '../db/client.js';
 import { authenticate, adminOnly } from '../lib/auth.js';
-import { logAudit } from '../lib/audit.js';
 import { invalidateSettingsCache } from '../lib/settings.js';
 import { toHttpError } from '../lib/errors.js';
 
@@ -19,13 +19,26 @@ const backupSchema = z.object({
 });
 const userCredentialsSchema = z.array(z.object({ password: z.string().min(1), totp_secret: z.string().nullable() }).passthrough());
 
+const auditEvent = (req: any, action: string, details?: Record<string, unknown>) => ({
+  user_id: req.user?.id ?? null,
+  username: req.user?.username ?? null,
+  action,
+  entity_type: 'backup',
+  entity_id: null,
+  details: details ? JSON.stringify(details) : null,
+  ip: req.ip ?? null,
+});
+
 export async function backupRoutes(app: FastifyInstance) {
   app.get('/api/backup', { preHandler: [authenticate, adminOnly] }, async (req, reply) => {
     const query = z.object({ includeSensitive: z.enum(['true', 'false']).default('false') }).safeParse(req.query);
     if (!query.success) return reply.code(400).send({ error: 'invalid input' });
     const includeSensitive = query.data.includeSensitive === 'true';
-    const data = await backupRepository.exportAll(undefined, { includeSensitiveUserData: includeSensitive });
-    await logAudit(req, 'backup.exported', 'backup', undefined, { includeSensitive });
+    const data = await db.transaction(async tx => {
+      const exported = await backupRepository.exportAll(tx, { includeSensitiveUserData: includeSensitive });
+      await auditRepository.create(tx, auditEvent(req, 'backup.exported', { includeSensitive }));
+      return exported;
+    });
     return { meta: { app: 'inventario', version: 1, exported_at: new Date().toISOString(), includes_sensitive_user_data: includeSensitive }, data };
   });
 
@@ -39,9 +52,8 @@ export async function backupRoutes(app: FastifyInstance) {
     if (!usersParsed.success) return reply.code(400).send({ error: 'invalid backup file' });
     const data = parsed.data.data;
     try {
-      await backupRepository.restore(data);
+      await backupRepository.restore(data, auditEvent(req, 'backup.restored'));
       invalidateSettingsCache();
-      await logAudit(req, 'backup.restored', 'backup');
       return { ok: true, restored_at: new Date().toISOString() };
     } catch (error) {
       const mapped = toHttpError(error);

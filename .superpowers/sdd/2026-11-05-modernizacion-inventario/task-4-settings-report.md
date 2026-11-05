@@ -24,3 +24,11 @@ PostgreSQL 14 local temporal, inicializado con `initdb` fuera del repo, puerto `
 ## Alcance preservado
 
 Cambios limitados a backup, su repositorio directo, pruebas y documentos de Task 4. No se tocaron auth, inventario, empleados/papelería, frontend ni OpenAPI central.
+
+## Atomicidad de auditoría (revisión posterior)
+
+Los eventos de exportación y restauración se escriben ahora dentro de la misma transacción Drizzle que materializa la operación. `backup.exported` incluye únicamente `{ "includeSensitive": boolean }`; nunca incluye password, TOTP ni el contenido exportado. La exportación no se devuelve al cliente hasta que confirme el commit. `backup.restored` se inserta como último paso de la transacción de restore, por lo que un fallo de auditoría revierte también los deletes/inserts.
+
+La prueba de regresión instala un trigger PostgreSQL que rechaza ambos eventos. RED reprodujo restore exitoso pese al error de auditoría; GREEN confirmó que el restore devuelve error y preserva los datos anteriores, y que una exportación sensible no se entrega si falla su evento. También se consultan los eventos `AuditLog` en el flujo normal de export/restore y se comprueba que sus detalles no contienen secretos.
+
+Verificación final en PostgreSQL 14 desechable: integración de backup 4/4; `npm run build` correcto; `npm test` completo 49/49.
